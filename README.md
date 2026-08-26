@@ -57,6 +57,8 @@ py scripts/make_report.py 002594     # 产出底稿 JSON+HTML
 py -m uvicorn src.serve.main:app --port 8765   # API + 前端
 ```
 
+起服务后浏览器打开 **http://127.0.0.1:8765**：输入股票代码生成底稿 + 关联路径图(vis-network) + 问答框(接 `/api/ask`)。
+
 `cp .env.example .env` 填 `GLM_API_KEY`（经 DashScope 兼容端点）后启用消歧兜底/事件抽取/报告撰写。`RPSCOPE_LLM_ENABLED=false` 时全系统走降级路径（规则+模板）仍可产出底稿。
 
 ## 诚实声明边界（加分项）
