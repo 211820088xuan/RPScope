@@ -22,9 +22,17 @@ def norm_name(name: str) -> str:
     return normalize_name(org_match_key(name)) or normalize_name(name)
 
 
-def align_one(store: Store, engine: RuleEngine, stock_code: str, as_of: str | None = None) -> dict:
-    # gold 名集
-    gold_rows = store.get_gold(stock_code)
+def align_one(store: Store, engine: RuleEngine, stock_code: str, as_of: str | None = None,
+               scope: str | None = None) -> dict:
+    """对齐 gold 与系统候选, 输出三分类。
+    scope: None=全部gold, 'upstream'=仅系统能力内, 'downstream'=仅能力外
+    """
+    if scope:
+        gold_rows = store.conn.execute(
+            "SELECT party_name FROM gold_related_party WHERE stock_code=? AND scope_class=?",
+            (stock_code, scope)).fetchall()
+    else:
+        gold_rows = store.get_gold(stock_code)
     gold_names = {norm_name(r["party_name"]) for r in gold_rows if r["party_name"]}
     gold_names.discard("")
     # 系统候选名集
@@ -39,11 +47,13 @@ def align_one(store: Store, engine: RuleEngine, stock_code: str, as_of: str | No
             "cands": cands}
 
 
-def align_batch(store: Store, engine: RuleEngine, codes: list[str]) -> dict:
+def align_batch(store: Store, engine: RuleEngine, codes: list[str], scope: str | None = None) -> dict:
     agg = defaultdict(list)
+    per = []
     for c in codes:
-        r = align_one(store, engine, c)
+        r = align_one(store, engine, c, scope=scope)
+        per.append(r)
         for k in ("matched", "gold_only", "system_only"):
             agg[k].extend([(c, n) for n in r[k]])
-    return {"per_company": [align_one(store, engine, c) for c in codes],
+    return {"per_company": per,
             "matched": agg["matched"], "gold_only": agg["gold_only"], "system_only": agg["system_only"]}
