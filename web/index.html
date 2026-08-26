@@ -2,50 +2,65 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<title>RPScope 关联方穿透底稿</title>
+<title>RPScope 关联方穿透与风险底稿</title>
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <style>
-body{font-family:'Microsoft YaHei',sans-serif;max-width:1100px;margin:20px auto;padding:0 16px;color:#222}
-input{padding:6px;font-size:14px;width:120px}
+body{font-family:'Microsoft YaHei',sans-serif;max-width:1200px;margin:0 auto;padding:16px;color:#222;background:#f8f8f8}
+h1{color:#36c;border-bottom:2px solid #36c;padding-bottom:8px}
+.bar{display:flex;gap:8px;align-items:center;background:#fff;padding:10px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.1);margin-bottom:12px}
+input{padding:6px;font-size:14px;border:1px solid #ccc;border-radius:3px}
 button{padding:6px 14px;font-size:14px;cursor:pointer;background:#36c;color:#fff;border:none;border-radius:3px}
-h2{border-left:4px solid #6c3;padding-left:8px;margin-top:24px}
-.sec{margin:8px 0}
-.c{margin:4px 0;padding:6px;border-left:3px solid #ccc}
+button:hover{background:#25a}
+h2{border-left:4px solid #6c3;padding-left:8px;margin-top:20px;font-size:16px}
+.c{margin:3px 0;padding:5px 8px;border-left:3px solid #ccc;background:#fff;font-size:13px}
 .high{border-color:#5a5}.medium{border-color:#c93}.low{border-color:#999}
-.warn{color:#c33;font-size:.9em}
-#net{height:340px;border:1px solid #ddd;background:#fafafa}
-.box{display:flex;gap:16px}.col{flex:1}
-pre{white-space:pre-wrap;background:#f6f6f6;padding:8px}
+.warn{color:#c33;font-size:.85em}
+.box{display:flex;gap:12px}.col{flex:1;background:#fff;padding:10px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+#net{height:380px;border:1px solid #ddd;background:#fafafa;border-radius:4px}
+.qa{background:#fff;padding:10px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.1);margin-bottom:12px}
+.qa pre{white-space:pre-wrap;background:#f6f6f6;padding:8px;font-size:13px;max-height:240px;overflow:auto}
+small{color:#888}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;background:#eee;margin-left:6px}
 </style>
 </head>
 <body>
 <h1>RPScope 上市公司关联方穿透与风险底稿</h1>
-<div class=sec>
-  <input id=code placeholder="股票代码 如 002594" value="002594">
+
+<div class=bar>
+  <b>股票代码</b>
+  <input id=code value=002594 style="width:90px">
   <button onclick=load()>生成底稿</button>
   <span id=stat class=warn></span>
 </div>
+
+<div class=qa>
+  <b>提问</b>
+  <input id=q style="flex:1;width:auto" value="002594的前十大股东和实控人">
+  <button onclick=ask()>问</button>
+  <small>试: "002594的关联方" / "002594和300750是什么关系" / "002594有哪些风险事件"</small>
+  <pre id=ans style="display:none"></pre>
+</div>
+
 <div class=box>
-  <div class=col id=report></div>
-  <div class=col><h2>关联路径图</h2><div id=net></div></div>
+  <div class=col id=report style="flex:1.4"><small>输入代码点"生成底稿"</small></div>
+  <div class=col style="flex:1"><h2>关联路径图</h2><div id=net></div></div>
 </div>
 
 <script>
-function norm(s){return s}
 async function load(){
   const code=document.getElementById('code').value.trim();
-  const stat=document.getElementById('stat');stat.textContent='加载中...';
+  document.getElementById('stat').textContent='加载中...';
   const rep=document.getElementById('report');rep.innerHTML='';
-  const r=await fetch('/api/report/'+code).then(x=>x.json()).catch(e=>{stat.textContent='错误:'+e;});
-  if(!r||r.error){stat.textContent='无数据';return;}
-  stat.textContent=`matched=${r.related.n_matched} 系统发现=${r.related.n_system_only} 年报未验证=${r.related.n_gold_only} 事件=${r.events.length}`;
+  const r=await fetch('/api/report/'+code).then(x=>x.json()).catch(e=>{document.getElementById('stat').textContent='错误:'+e;});
+  if(!r||r.error){document.getElementById('stat').textContent='无数据';return;}
+  document.getElementById('stat').textContent=`matched=${r.related.n_matched} 系统发现=${r.related.n_system_only} 年报未验证=${r.related.n_gold_only} 事件=${r.events.length}`;
   const co=r.basic||{};
   let h=`<h2>一、基本信息</h2><p>${co.short_name||''}(${co.stock_code||''}) 行业=${co.industry||'未知'}</p>`;
-  h+=`<h2>二、股权结构</h2><p><b>前十大股东:</b></p><ul>`;
+  h+=`<h2>二、股权结构</h2><p><b>前十大股东(非通道):</b></p><ul>`;
   (r.holders||[]).slice(0,10).forEach(x=>h+=`<li>${x.holder_rank}. ${x.display_name} ${x.ratio}%</li>`);
   h+=`</ul><p><b>实控人:</b> ${(r.controllers||[]).map(x=>x.display_name+'('+x.control_ratio+'%)').join(', ')||'无'}</p>`;
   h+=`<h2>三、关联方清单</h2>`;
-  h+=`<p class=warn>3.2 系统发现·待核查 ${r.related.n_system_only} 条 (核心价值) <span class=warn>3.3 年报未验证 ${r.related.n_gold_only} (诚实盲区)</span></p>`;
+  h+=`<div class=warn>3.2 系统发现·待核查 ${r.related.n_system_only} 条(核心价值) | 3.3 年报未验证 ${r.related.n_gold_only}(诚实盲区)</div>`;
   h+=`<ul>`;
   (r.related.system_only||[]).slice(0,20).forEach(s=>h+=`<li class="c ${s.confidence}"><b>[${s.confidence}]</b> ${s.name} &lt;- ${s.rule}<br><small>${s.path||''}</small></li>`);
   h+=`</ul><p><b>3.1 已披露验证:</b> ${(r.related.matched||[]).map(x=>x.name).join(', ')||'无'}</p>`;
@@ -54,18 +69,21 @@ async function load(){
   (r.events||[]).slice(0,15).forEach(e=>h+=`<li>${e.event_type} | ${e.event_date||'?'} | ${e.summary||''}</li>`);
   h+=`</ul><h2>五、口径</h2><p class=warn>${r.disclaimer.disclaimer}</p>`;
   rep.innerHTML=h;
-  drawNet(code, r);
+  drawNet(code,r);
 }
-function drawNet(code, r){
-  const nodes=[{id:code,label:code,color:'#f90',shape:'box'}];
-  const edges=[];
-  let i=0;
-  (r.related.system_only||[]).slice(0,15).forEach(s=>{
-    const id='p'+i++;nodes.push({id,label:s.name,color:s.confidence=='high'?'#5a5':(s.confidence=='medium'?'#c93':'#999')});
-    edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence=='low'});
-  });
+function drawNet(code,r){
+  const nodes=[{id:code,label:code,color:'#f90',shape:'box'}],edges=[];let i=0;
+  (r.related.system_only||[]).slice(0,15).forEach(s=>{const id='p'+i++;nodes.push({id,label:s.name,color:s.confidence=='high'?'#5a5':(s.confidence=='medium'?'#c93':'#999')});edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence=='low'});});
   (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:'#36c'});edges.push({from:code,to:id,label:'gold',arrows:'to'});});
   new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{layout:{improvedLayout:false}});
+}
+async function ask(){
+  const q=document.getElementById('q').value.trim();if(!q)return;
+  const ans=document.getElementById('ans');ans.style.display='block';ans.textContent='思考中...';
+  const r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})}).then(x=>x.json()).catch(e=>'错误:'+e);
+  if(typeof r==='string'){ans.textContent=r;return;}
+  const v=r.verify||{};
+  ans.innerHTML=`<b>意图:</b> ${r.intent} <span class=tag>LLM:${r.used_llm}</span><span class=tag>回查:${v.passed?'通过':'未通过'}</span><span class=tag>${r.elapsed_ms?.toFixed(0)}ms</span>${r.cache_hit?'<span class=tag>缓存命中</span>':''}\n\n${r.answer}`;
 }
 </script>
 </body>
