@@ -195,7 +195,7 @@ async function load(force){
   document.getElementById('chips').innerHTML='<span class=chip>加载中…</span>';
   const rep=document.getElementById('report');rep.innerHTML='<p class=empty>加载中…</p>';
   let r;
-  try{ r=await fetch('/api/report/'+code).then(x=>x.ok?x.json():Promise.reject(await x.text())); }
+  try{ r=await fetch('/api/report/'+code).then(async x=>x.ok?x.json():Promise.reject(await x.text())); }
   catch(e){ rep.innerHTML='<p class=err>错误: '+String(e).slice(0,200)+'</p>'; return; }
   if(!r||r.error){rep.innerHTML='<p class=err>'+(r&&r.error||'无数据')+'</p>';return;}
   document.getElementById('chips').innerHTML=
@@ -215,7 +215,7 @@ function renderReport(code,r){
      '<div class=ctrl-line><span class=lbl>行业</span>'+(co.industry||'未知')+'</div></section>';
   h+='<section><h2><span class=num>02</span>股权结构</h2><ul>';
   (r.holders||[]).slice(0,10).forEach(x=>h+='<li class=holder><span class=nm>'+(x.holder_rank||'')+'. '+x.display_name+'</span><span class=pct>'+(x.ratio!=null?x.ratio+'%':'—')+'</span></li>');
-  h+='</ul><div class=ctrl-line style="margin-top:8px"><span class=lbl>实控人</span>'+(r.controllers||[]).map(x=>x.display_name+' ('+x.control_ratio+'%)').join('， ')||'未披露'+'</div></section>';
+  h+='</ul><div class=ctrl-line style="margin-top:8px"><span class=lbl>实控人</span>'+((r.controllers||[]).map(x=>x.display_name+' ('+x.control_ratio+'%)').join('， ')||'未披露')+'</div></section>';
   const rr=r.related||{};
   h+='<section><h2><span class=num>03</span>关联方清单</h2>'+
     '<div class=three>'+
@@ -252,7 +252,7 @@ async function ask(){
   const q=document.getElementById('q').value.trim();if(!q)return;
   const out=document.getElementById('ans');out.innerHTML='<span style="color:var(--low)">思考中…</span>';
   let r;
-  try{ r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})}).then(x=>x.ok?x.json():Promise.reject(await x.text())); }
+  try{ r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})}).then(async x=>x.ok?x.json():Promise.reject(await x.text())); }
   catch(e){ out.innerHTML='<span class=err>错误: '+String(e).slice(0,300)+'</span>'; return; }
   const v=r.verify||{};
   out.innerHTML='<div class=tagrow>意图 '+r.intent+' · LLM '+(r.used_llm?'用':'未用')+' · 回查 '+(v.passed?'通过':'未通过')+(r.elapsed_ms!=null?' · '+Math.round(r.elapsed_ms)+'ms':'')+(r.cache_hit?' · 缓存':'')+'</div>'+r.answer;
