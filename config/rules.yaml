@@ -1,0 +1,80 @@
+# RPScope 规则配置 - 初始阈值
+# ⚠️ 本文件的所有阈值在 P0 数据探针完成后，依据 docs/data-probe.md 的真实分布重新校准。
+# 当前值是基于上市规则口径的工程化默认值，未经验证。
+
+rules:
+  R1:  # 直接持股
+    enabled: true
+    thresholds:
+      control: 50.0          # % → 控制 → high
+      significant: 20.0      # % → 重大影响 → high
+      related_party: 5.0     # % → 交易所关联人标准 → high
+    base_confidence: high
+
+  R2:  # 同一控制（共同实控人）
+    enabled: true
+    base_confidence: high
+
+  R3:  # 共同重要股东
+    enabled: true
+    thresholds:
+      min_ratio: 5.0         # % 两边均达此值才算共同股东
+    require_same_period: true
+    base_confidence: high    # 阈值>=5%; 3-5% 区间降为 medium
+
+  R4:  # 连锁董事（交叉任职）
+    enabled: true
+    title_classes: [director, supervisor, senior_mgmt]  # 不含 independent_director
+    base_confidence: inherit_from_disambiguation  # 不得高于消歧置信度
+
+  R5:  # 关键人关联
+    enabled: true
+    thresholds:
+      min_ratio: 5.0
+    base_confidence: high
+
+  R6:  # 间接股权穿透
+    enabled: true
+    max_hops: 3
+    min_effective_ratio: 5.0  # 链上比例乘积阈值 %
+    timeout_ms: 5000
+
+  R7:  # 事件型关联
+    enabled: true
+    base_confidence: high  # 结构化担保; 文本抽取降为 low 仅作上下文
+
+# 通道类股东排除名单（准则第36号第六条第(一)项 + 实质重于形式）
+# P0 探针验证：首轮排除后最高度数仍 601（ETF中文名+QFII未排），补全后复测。
+# 这份名单本身是 domain know-how 产出物，持续维护。
+channel_exclusion:
+  exact:
+    - 香港中央结算有限公司
+    - 中国证券金融股份有限公司
+    - 中央汇金资产管理有限责任公司
+    - HKSCC NOMINEES LIMITED
+  patterns:
+    # ETF / 指数基金 / 公募基金产品（被动/集合投资，无控制意图）
+    - ".*交易型开放式指数.*"
+    - ".*指数.*证券投资基金.*"
+    - ".*证券投资基金.*"
+    # 社保 / 资管 / 信托通道 (注意: 官方名用"社会保障"非"社保", 故双 pattern)
+    - ".*社保.*"
+    - ".*社会保障.*"
+    - ".*资产管理计划$"
+    - ".*信托计划$"
+    - ".*客户资金.*"
+    - ".*客户信用.*|.*信用交易.*|.*信用账户.*"
+    # 保险资金集合产品
+    - ".*保险.*产品.*"
+    # QFII/RQFII 北向 Nominee 席位 (数据里 MORGANSTANLEY 无空格, 故用 MORGAN 不带空格)
+    - "BARCLAYS|UBS|MORGAN|J\\.?P\\.?Morgan|DEUTSCHE BANK|BNP PARIBAS|CREDIT SUISSE|NORTHERN TRUST|STATE STREET|CITIGROUP|GOLDMAN|高盛.*|MSCI|VANGUARD|BLACKROCK|MERRILL LYNCH|HSBC|DBS|NOMINEES"
+    - ".*自有资金$"
+    # HKSCC 全变体(代理/代理人)
+    - ".*香港中央结算.*"
+    # 政府控制人排除: 准则第36号"同受国家控制的企业之间不构成关联方" + 第六条第(一)政府部门
+    # 各级国资委/国务院/财政部 作为共同控制人会把所有国企两两相连, 不构成实质关联, 排除
+    - ".*国有资产监督管理委员会.*"
+    - ".*国务院.*"
+    - ".*财政部$"
+  # 注：exact_qfii_nominee 已并入 exact；此键保留作扩展位
+  exact_qfii_nominee: []

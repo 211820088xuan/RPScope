@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>RPScope 关联方穿透底稿</title>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+body{font-family:'Microsoft YaHei',sans-serif;max-width:1100px;margin:20px auto;padding:0 16px;color:#222}
+input{padding:6px;font-size:14px;width:120px}
+button{padding:6px 14px;font-size:14px;cursor:pointer;background:#36c;color:#fff;border:none;border-radius:3px}
+h2{border-left:4px solid #6c3;padding-left:8px;margin-top:24px}
+.sec{margin:8px 0}
+.c{margin:4px 0;padding:6px;border-left:3px solid #ccc}
+.high{border-color:#5a5}.medium{border-color:#c93}.low{border-color:#999}
+.warn{color:#c33;font-size:.9em}
+#net{height:340px;border:1px solid #ddd;background:#fafafa}
+.box{display:flex;gap:16px}.col{flex:1}
+pre{white-space:pre-wrap;background:#f6f6f6;padding:8px}
+</style>
+</head>
+<body>
+<h1>RPScope 上市公司关联方穿透与风险底稿</h1>
+<div class=sec>
+  <input id=code placeholder="股票代码 如 002594" value="002594">
+  <button onclick=load()>生成底稿</button>
+  <span id=stat class=warn></span>
+</div>
+<div class=box>
+  <div class=col id=report></div>
+  <div class=col><h2>关联路径图</h2><div id=net></div></div>
+</div>
+
+<script>
+function norm(s){return s}
+async function load(){
+  const code=document.getElementById('code').value.trim();
+  const stat=document.getElementById('stat');stat.textContent='加载中...';
+  const rep=document.getElementById('report');rep.innerHTML='';
+  const r=await fetch('/api/report/'+code).then(x=>x.json()).catch(e=>{stat.textContent='错误:'+e;});
+  if(!r||r.error){stat.textContent='无数据';return;}
+  stat.textContent=`matched=${r.related.n_matched} 系统发现=${r.related.n_system_only} 年报未验证=${r.related.n_gold_only} 事件=${r.events.length}`;
+  const co=r.basic||{};
+  let h=`<h2>一、基本信息</h2><p>${co.short_name||''}(${co.stock_code||''}) 行业=${co.industry||'未知'}</p>`;
+  h+=`<h2>二、股权结构</h2><p><b>前十大股东:</b></p><ul>`;
+  (r.holders||[]).slice(0,10).forEach(x=>h+=`<li>${x.holder_rank}. ${x.display_name} ${x.ratio}%</li>`);
+  h+=`</ul><p><b>实控人:</b> ${(r.controllers||[]).map(x=>x.display_name+'('+x.control_ratio+'%)').join(', ')||'无'}</p>`;
+  h+=`<h2>三、关联方清单</h2>`;
+  h+=`<p class=warn>3.2 系统发现·待核查 ${r.related.n_system_only} 条 (核心价值) <span class=warn>3.3 年报未验证 ${r.related.n_gold_only} (诚实盲区)</span></p>`;
+  h+=`<ul>`;
+  (r.related.system_only||[]).slice(0,20).forEach(s=>h+=`<li class="c ${s.confidence}"><b>[${s.confidence}]</b> ${s.name} &lt;- ${s.rule}<br><small>${s.path||''}</small></li>`);
+  h+=`</ul><p><b>3.1 已披露验证:</b> ${(r.related.matched||[]).map(x=>x.name).join(', ')||'无'}</p>`;
+  h+=`<p><b>3.3 年报未验证:</b> ${(r.related.gold_only||[]).map(x=>x.name).join(', ')||'无'}</p>`;
+  h+=`<h2>四、风险事件</h2><ul>`;
+  (r.events||[]).slice(0,15).forEach(e=>h+=`<li>${e.event_type} | ${e.event_date||'?'} | ${e.summary||''}</li>`);
+  h+=`</ul><h2>五、口径</h2><p class=warn>${r.disclaimer.disclaimer}</p>`;
+  rep.innerHTML=h;
+  drawNet(code, r);
+}
+function drawNet(code, r){
+  const nodes=[{id:code,label:code,color:'#f90',shape:'box'}];
+  const edges=[];
+  let i=0;
+  (r.related.system_only||[]).slice(0,15).forEach(s=>{
+    const id='p'+i++;nodes.push({id,label:s.name,color:s.confidence=='high'?'#5a5':(s.confidence=='medium'?'#c93':'#999')});
+    edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence=='low'});
+  });
+  (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:'#36c'});edges.push({from:code,to:id,label:'gold',arrows:'to'});});
+  new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{layout:{improvedLayout:false}});
+}
+</script>
+</body>
+</html>

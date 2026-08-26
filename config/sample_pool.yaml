@@ -1,0 +1,24 @@
+# RPScope 样本池 - 三档
+# 选取原则见开发指导 3.2 节
+# Dev 集：50 家，P0-P2 调试
+# Eval 集：300 家，P3-P8 评测主战场
+# Full 集：全市场 ~5000 家，P9 之后可选
+
+dev:
+  # P0 探针用 50 家：沪深主板各 25 家，跨 3 个行业
+  # 具体代码在 P0.2 由 akshare_client.fetch_companies() 动态选取后固化
+  industries:
+    - 汽车整车      # 新能源车链
+    - 电池          # 宁德时代链
+    - 半导体        # 高管交叉多
+  size: 50
+  exchanges: [sh, sz]
+
+eval:
+  size: 300
+  require_st: true
+  st_count: [20, 30]
+  market_cap_tiers: [large, mid, small]
+
+full:
+  size: -1  # 全市场

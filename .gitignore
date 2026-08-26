@@ -1,0 +1,30 @@
+# 敏感(不入库)
+.env
+*.key
+*.pem
+
+# 数据(脱敏后仅保留 sample, 不入库全量)
+.cache/
+*.db
+*.db-journal
+reports/
+data/gold_unmapped.csv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# PDF / 文本缓存
+.cache/pdf_text/
+.cache/pdfs/
+
+# OS
+.DS_Store
+Thumbs.db

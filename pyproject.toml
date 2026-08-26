@@ -1,0 +1,53 @@
+[project]
+name = "rpscope"
+version = "0.1.0"
+description = "RPScope - A-share related-party penetration & risk dossier system"
+requires-python = ">=3.11"
+dependencies = [
+    "akshare>=1.14",
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "requests>=2.31",
+    "tenacity>=8.2",
+    "pyyaml>=6.0",
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+    "neo4j>=5.0",
+    "pgvector>=0.2",
+    "openai>=1.0",
+    "langgraph>=0.2",
+    "langchain-core>=0.3",
+    "langfuse>=2.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "pdfplumber>=0.10",
+    "rapidfuzz>=3.0",
+    "simhash>=0.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
