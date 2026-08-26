@@ -19,9 +19,12 @@ def build_dossier(store: Store, engine: RuleEngine, stock_code: str, as_of: str 
     basic = dict(co) if co else {}
     # 二、股权结构
     holders = [dict(r) for r in store.conn.execute(
-        "SELECT h.ratio, h.holder_rank, e.display_name, e.entity_type, e.is_channel, e.confidence "
+        "SELECT MAX(h.ratio) AS ratio, e.display_name, e.entity_type, e.is_channel, e.confidence "
         "FROM holding h JOIN entity e ON h.entity_id=e.entity_id "
-        "WHERE h.stock_code=? AND e.is_channel=0 ORDER BY h.holder_rank LIMIT 10", (code,)).fetchall()]
+        "WHERE h.stock_code=? AND h.source='stock_gdfx_free_holding_detail_em' "
+        "GROUP BY e.entity_id, e.display_name, e.entity_type, e.is_channel, e.confidence "
+        "ORDER BY MIN(h.id) LIMIT 10",
+        (code,)).fetchall()]
     controllers = [dict(r) for r in store.conn.execute(
         "SELECT ac.control_ratio, e.display_name, e.entity_type FROM actual_controller ac "
         "JOIN entity e ON ac.entity_id=e.entity_id WHERE ac.stock_code=? AND e.is_channel=0", (code,)).fetchall()]
