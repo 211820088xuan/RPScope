@@ -222,7 +222,7 @@ function renderReport(code,r){
   h+='<div class=rp-list">';
   (rr.system_only||[]).slice(0,18).forEach(s=>{
     const cf=s.confidence;
-    h+=`<div class=rp-item><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${s.rule}</span>${s.path?`<div class=pth>${s.path}</div>`:''}</div>`;
+    h+=`<div class=rp-item><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${s.rule}</span>${s.path?`<div class=pth>${s.path.slice(0,120)}${s.path.length>120?'…':''}</div>`:''}</div>`;
   });
   h+='</div>';
   h+=`<div class=rp-inline"><span class=dim>已披露验证:</span> ${(rr.matched||[]).map(x=>x.name).join(', ')||'<span class=dim>无</span>'}</div>`;

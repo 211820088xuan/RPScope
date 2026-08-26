@@ -50,11 +50,13 @@ class Rule:
         return True
 
 
-def merge_confidence(cands: list[RelatedPartyCandidate]) -> list[RelatedPartyCandidate]:
-    """5.3 置信度合并: 同一 (subject, party) 多规则命中取最高置信, score 加 0.1*(命中数-1) 上限1.0。
+def _merge_rules(a: str, b: str) -> str:
+    """合并两个 rule_id(可能含 +)，去重排序。"""
+    return "+".join(sorted(set(a.split("+") + b.split("+"))))
 
-    R4 的置信度不得高于其消歧置信度 -> 由 R4 自身在 evaluate 里 clamp, 这里不再下调。
-    """
+
+def merge_confidence(cands: list[RelatedPartyCandidate]) -> list[RelatedPartyCandidate]:
+    """5.3 置信度合并: 同一 (subject, party) 多规则命中取最高置信, score 加 0.1*(命中规则数-1) 上限1.0。"""
     bucket: dict[tuple, RelatedPartyCandidate] = {}
     rank = {"high": 3, "medium": 2, "low": 1}
     for c in cands:
@@ -64,18 +66,17 @@ def merge_confidence(cands: list[RelatedPartyCandidate]) -> list[RelatedPartyCan
         else:
             cur = bucket[k]
             if rank.get(c.confidence, 0) > rank.get(cur.confidence, 0):
-                # 保留更高置信的那条, 合并规则编号/证据/路径
                 c2 = RelatedPartyCandidate(
                     subject_code=c.subject_code, party_id=c.party_id, party_name=c.party_name,
-                    rule_id=f"{cur.rule_id}+{c.rule_id}",
-                    path=cur.path + c.path, evidence=cur.evidence + c.evidence,
+                    rule_id=_merge_rules(cur.rule_id, c.rule_id),
+                    path=cur.path[:1] + c.path[:1], evidence=cur.evidence + c.evidence,
                     confidence=c.confidence,
                     score=min(1.0, max(cur.score, c.score) + 0.1), as_of_date=c.as_of_date,
                 )
                 bucket[k] = c2
             else:
-                cur.path = cur.path + c.path
+                cur.rule_id = _merge_rules(cur.rule_id, c.rule_id)
+                cur.path = cur.path[:1] + c.path[:1]
                 cur.evidence = cur.evidence + c.evidence
-                cur.rule_id = f"{cur.rule_id}+{c.rule_id}"
                 cur.score = min(1.0, cur.score + 0.1)
     return list(bucket.values())

@@ -16,11 +16,14 @@ class R1Direct(Rule):
     def evaluate(self, store, subject_code: str, as_of: str | None = None) -> list[RelatedPartyCandidate]:
         th = self.cfg.get("thresholds", {})
         out: list[RelatedPartyCandidate] = []
+        # GROUP BY entity_id: 同一股东多条 ggcg 变动记录只取 max(ratio), 不重复生成候选
         rows = store.conn.execute(
-            "SELECT h.id, h.entity_id, h.ratio, h.holder_rank, h.report_period, h.source, "
-            "e.is_channel, e.entity_type, e.confidence FROM holding h "
-            "JOIN entity e ON h.entity_id=e.entity_id "
-            "WHERE h.stock_code=? AND e.is_channel=0", (subject_code,)).fetchall()
+            "SELECT MAX(h.ratio) AS ratio, MAX(h.id) AS id, h.entity_id, "
+            "MAX(h.holder_rank) AS holder_rank, MAX(h.report_period) AS report_period, "
+            "MAX(h.source) AS source, e.is_channel, e.entity_type, e.confidence "
+            "FROM holding h JOIN entity e ON h.entity_id=e.entity_id "
+            "WHERE h.stock_code=? AND e.is_channel=0 "
+            "GROUP BY h.entity_id, e.is_channel, e.entity_type, e.confidence", (subject_code,)).fetchall()
         for r in rows:
             if not self.valid_in(r, as_of):
                 continue
