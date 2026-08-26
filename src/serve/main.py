@@ -85,6 +85,20 @@ def stats():
     return {"cache": _cache.snapshot(), "traces": trace_snapshot()}
 
 
+@app.get("/api/random")
+def random_company():
+    """随机一家有实控人数据的公司(保证底稿有内容)。"""
+    s = _store()
+    try:
+        row = s.conn.execute(
+            "SELECT stock_code, short_name FROM company WHERE stock_code IN "
+            "(SELECT DISTINCT stock_code FROM actual_controller) "
+            "ORDER BY RANDOM() LIMIT 1").fetchone()
+        return dict(row) if row else {}
+    finally:
+        s.close()
+
+
 @app.get("/")
 def index():
     return FileResponse(WEB_DIR / "index.html")

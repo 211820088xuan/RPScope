@@ -141,6 +141,16 @@ td.r,th.r{text-align:right;font-family:'JetBrains Mono',monospace}
   <button onclick="load()">生成底稿</button>
   <button class="ghost" onclick="load('002594')">比亚迪</button>
   <button class="ghost" onclick="load('300750')">宁德时代</button>
+  <button class="ghost" onclick="load('600519')">茅台</button>
+  <button class="ghost" onclick="load('000858')">五粮液</button>
+  <button class="ghost" onclick="load('601318')">中国平安</button>
+  <button class="ghost" onclick="load('600036')">招商银行</button>
+  <button class="ghost" onclick="load('300059')">东方财富</button>
+  <button class="ghost" onclick="load('601012')">隆基绿能</button>
+  <button class="ghost" onclick="load('000001')">平安银行</button>
+  <button class="ghost" onclick="load('600276')">恒瑞医药</button>
+  <button class="ghost" onclick="load('002475')">立讯精密</button>
+  <button class="ghost" onclick="randomCo()" style="color:var(--accent)">随机一家</button>
   <span class="stat" id="stat"></span>
 </div>
 
@@ -248,6 +258,11 @@ function drawNet(code,r){
   (r.related.system_only||[]).slice(0,12).forEach(s=>{const id='p'+i++;const col=s.confidence==='high'?'#15803d':(s.confidence==='medium'?'#b45309':'#6b7280');nodes.push({id,label:s.name,color:col,font:{...F,size:11}});edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence==='low',color:'#9ca3af',font:{size:10,color:'#6b7280'}})});
   (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:'#1e40af',font:{...F,size:11}});edges.push({from:code,to:id,label:'验证',arrows:'to',color:'#1e40af',font:{size:10,color:'#1e40af'}})});
   new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{layout:{improvedLayout:true},physics:{stabilization:true,barnesHut:{springLength:160,springStrength:.04}},nodes:{shape:'box',margin:8,widthConstraint:{maximum:140},borderWidth:2},edges:{smooth:{type:'continuous'},width:1.5}});
+}
+async function randomCo(){
+  try{const r=await fetch('/api/random').then(async x=>x.ok?x.json():Promise.reject(await x.text()));
+    if(r&&r.stock_code){document.getElementById('code').value=r.stock_code;load(r.stock_code)}
+  }catch(e){}
 }
 async function ask(){
   const q=document.getElementById('q').value.trim();if(!q)return;
