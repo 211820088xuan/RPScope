@@ -1,10 +1,10 @@
 """P9 FastAPI 服务 - /api/report /api/company /api/ask + 静态前端。
 
 无 LLM 依赖(底稿模板/规则引擎确定性); /api/ask 的 open_qa 才用 LLM(慢)。
+Store 每请求新开(彻底免疫 SQLite 跨线程, 不依赖 check_same_thread 也不依赖进程启动时机)。
 """
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -26,7 +26,7 @@ from src.store.db import Store
 app = FastAPI(title="RPScope")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-_store = Store("rpscope.db")
+# 无状态/线程安全的单例; Store 每请求开(见 _store())
 _eng = RuleEngine("config/rules.yaml")
 _llm = LLMClient()
 _cache = QueryCache()
@@ -34,19 +34,30 @@ _cache = QueryCache()
 WEB_DIR = Path(__file__).resolve().parent.parent.parent / "web"
 
 
+def _store() -> Store:
+    """每请求开新 Store: 开在处理该请求的线程里, 天然同线程, 彻底免疫跨线程问题。"""
+    return Store("rpscope.db")
+
+
 @app.get("/api/company/{code}")
 def company(code: str):
-    co = _store.conn.execute("SELECT * FROM company WHERE stock_code=?", (code.zfill(6),)).fetchone()
-    return dict(co) if co else {}
+    s = _store()
+    try:
+        co = s.conn.execute("SELECT * FROM company WHERE stock_code=?", (code.zfill(6),)).fetchone()
+        return dict(co) if co else {}
+    finally:
+        s.close()
 
 
 @app.get("/api/report/{code}")
 def report(code: str):
+    s = _store()
     try:
-        d = build_dossier(_store, _eng, code)
-        return d
+        return build_dossier(s, _eng, code)
     except Exception as e:
         raise HTTPException(500, str(e))
+    finally:
+        s.close()
 
 
 @app.post("/api/ask")
@@ -57,10 +68,14 @@ def ask(body: dict):
     cached = _cache.get(q)
     if cached is not None:
         cached["cache_hit"] = True
-        return cached
-    r = agent_run(_store, _eng, _llm, q)
+        return dict(cached)
+    s = _store()
+    try:
+        r = agent_run(s, _eng, _llm, q)
+    finally:
+        s.close()
     out = {"intent": r["intent"], "answer": r["answer"], "used_llm": r["used_llm"],
-            "verify": r["verify"], "elapsed_ms": r["elapsed_ms"], "cache_hit": False}
+           "verify": r["verify"], "elapsed_ms": r["elapsed_ms"], "cache_hit": False}
     _cache.set(q, out)
     return out
 
@@ -75,6 +90,5 @@ def index():
     return FileResponse(WEB_DIR / "index.html")
 
 
-# 静态前端文件
 if WEB_DIR.exists():
     app.mount("/web", StaticFiles(directory=str(WEB_DIR)), name="web")
