@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from src.eval.aligner import align_one
+from src.eval.aligner import align_one, norm_name
 from src.normalize.name import normalize_name
 from src.rules.engine import RuleEngine
 from src.rules.path import render_path
@@ -30,7 +30,7 @@ def build_dossier(store: Store, engine: RuleEngine, stock_code: str, as_of: str 
     matched = [{"name": n, "type": "已披露且系统验证"} for n in a["matched"]]
     system_only = []
     for c in a["cands"]:
-        if normalize_name(c.party_name) in a["matched"]:
+        if norm_name(c.party_name) in a["matched"]:
             continue
         system_only.append({"name": c.party_name, "rule": c.rule_id, "confidence": c.confidence,
                             "path": render_path(c.path), "score": c.score,
