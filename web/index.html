@@ -149,14 +149,15 @@ td.r,th.r{text-align:right;font-family:'JetBrains Mono',monospace}
   <div class="col col-r">
     <div class="graph-card">
       <div class="gtitle">股权与关联路径</div>
+      <p style="font-size:11px;color:var(--ink2);margin-bottom:8px;line-height:1.6">橙色方块=被分析公司。箭头方向: 关联方 →(指向)→ 被分析公司。<b>实控人</b>(teal)控制公司; <b>股东</b>(灰)持股公司; <b>关联方候选</b>(绿=高/橙=中/灰=低置信)由规则引擎发现。蓝=年报金标准验证。</p>
       <div id="net"></div>
       <div class="legend">
-        <span><i style="background:#e08a2b"></i>主体</span>
-        <span><i style="background:var(--accent)"></i>实控人</span>
-        <span><i style="background:#888"></i>股东</span>
-        <span><i style="background:var(--high)"></i>high</span>
-        <span><i style="background:var(--med)"></i>medium</span>
-        <span><i style="background:var(--matched)"></i>验证</span>
+        <span><i style="background:#e08a2b"></i>主体公司</span>
+        <span><i style="background:#0f766e"></i>实控人(控制)</span>
+        <span><i style="background:#888"></i>股东(持股)</span>
+        <span><i style="background:var(--high)"></i>关联·高置信</span>
+        <span><i style="background:var(--med)"></i>中置信</span>
+        <span><i style="background:var(--matched)"></i>金标准验证</span>
       </div>
     </div>
   </div>
@@ -223,13 +224,14 @@ function renderReport(code,r){
   document.getElementById('report').innerHTML=h;
 }
 function drawNet(code,r){
+  const F={color:'#fff',face:'Noto Sans SC',size:12,bold:true};
   const nodes=[],edges=[];let i=0;
-  nodes.push({id:code,label:code,color:'#e08a2b',shape:'box',font:{color:'#fff',size:13}});
-  (r.controllers||[]).forEach(c=>{const id='c'+i++;nodes.push({id,label:c.display_name,color:'#0f766e',font:{color:'#fff',size:10}});edges.push({from:id,to:code,label:dv(c.control_ratio)+'%',arrows:'to',color:'#0f766e',font:{size:9}})});
-  (r.holders||[]).slice(0,8).forEach(x=>{if((r.controllers||[]).some(c=>c.display_name===x.display_name))return;const id='h'+i++;nodes.push({id,label:x.display_name,color:'#888',font:{color:'#fff',size:9}});edges.push({from:id,to:code,label:x.ratio!=null?x.ratio+'%':'',arrows:'to',color:'#cbd5e1',font:{size:9}})});
-  (r.related.system_only||[]).slice(0,12).forEach(s=>{const id='p'+i++;const col=s.confidence==='high'?'#15803d':(s.confidence==='medium'?'#b45309':'#6b7280');nodes.push({id,label:s.name,color:col,font:{color:'#fff',size:9}});edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence==='low',color:'#cbd5e1',font:{size:9}})});
-  (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:'#1e40af',font:{color:'#fff',size:9}});edges.push({from:code,to:id,label:'验证',arrows:'to',color:'#1e40af',font:{size:9}})});
-  new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{layout:{improvedLayout:true},physics:{stabilization:true,barnesHut:{springLength:130}},nodes:{shape:'dot',size:13},edges:{smooth:{type:'continuous'}}});
+  nodes.push({id:code,label:code,color:'#e08a2b',shape:'box',font:{...F,size:14}});
+  (r.controllers||[]).forEach(c=>{const id='c'+i++;nodes.push({id,label:c.display_name,color:'#0f766e',font:F});edges.push({from:id,to:code,label:'控制 '+(c.control_ratio||'')+'%',arrows:'to',color:'#0f766e',font:{size:10,color:'#0f766e'}})});
+  (r.holders||[]).slice(0,8).forEach(x=>{if((r.controllers||[]).some(c=>c.display_name===x.display_name))return;const id='h'+i++;nodes.push({id,label:x.display_name,color:'#6b7280',font:{...F,size:11}});edges.push({from:id,to:code,label:x.ratio!=null?'持股 '+x.ratio+'%':'持股',arrows:'to',color:'#9ca3af',font:{size:10,color:'#6b7280'}})});
+  (r.related.system_only||[]).slice(0,12).forEach(s=>{const id='p'+i++;const col=s.confidence==='high'?'#15803d':(s.confidence==='medium'?'#b45309':'#6b7280');nodes.push({id,label:s.name,color:col,font:{...F,size:11}});edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence==='low',color:'#9ca3af',font:{size:10,color:'#6b7280'}})});
+  (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:'#1e40af',font:{...F,size:11}});edges.push({from:code,to:id,label:'验证',arrows:'to',color:'#1e40af',font:{size:10,color:'#1e40af'}})});
+  new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{layout:{improvedLayout:true},physics:{stabilization:true,barnesHut:{springLength:140,springStrength:.04}},nodes:{shape:'dot',size:16,borderWidth:2},edges:{smooth:{type:'continuous'},width:1.5}});
 }
 async function ask(){
   const q=document.getElementById('q').value.trim();if(!q)return;
