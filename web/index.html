@@ -5,129 +5,159 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RPScope · 关联方穿透底稿</title>
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f5f5f7; --surface:#fff; --ink:#18181b; --ink2:#52525b; --ink3:#71717a;
-  --line:#e4e4e7; --line2:#f0f0f0;
-  --accent:#2563eb; --high:#16a34a; --med:#ca8a04; --low:#71717a; --matched:#1d4ed8;
+  --paper:#fafafa; --surface:#ffffff;
+  --ink:#1e293b; --ink2:#64748b; --ink3:#94a3b8;
+  --line:#e2e8f0; --line2:#f1f5f9;
+  --accent:#0f766e; --accent-soft:#ccfbf1;
+  --high:#15803d; --med:#b45309; --low:#6b7280; --matched:#1e40af;
+  --shadow:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);
+  --shadow-md:0 4px 6px rgba(15,23,42,.05),0 2px 4px rgba(15,23,42,.04);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:'Noto Sans SC',system-ui,sans-serif;font-size:13px;line-height:1.5}
+body{background:var(--paper);color:var(--ink);font-family:'Noto Sans SC',system-ui,sans-serif;font-size:13.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Noto Serif SC',serif}
 .mono{font-family:'JetBrains Mono',Consolas,monospace}
 
-/* top bar — flat, dense, terminal-like */
-.top{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--line)}
-.top .code{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);font-weight:500}
-.top .name{font-size:14px;font-weight:600}
-.top .spacer{flex:1}
-.top .badge{font-size:10px;color:var(--ink3);font-family:'JetBrains Mono',monospace}
+/* document header */
+.doc-head{background:var(--surface);border-bottom:1px solid var(--line);padding:20px 32px 16px}
+.doc-head .row1{display:flex;align-items:baseline;gap:10px}
+.doc-head .code{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);font-weight:500}
+.doc-head h1{font-family:'Noto Serif SC',serif;font-weight:700;font-size:20px;letter-spacing:-.3px}
+.doc-head .meta{margin-left:auto;font-size:11px;color:var(--ink3);text-align:right;line-height:1.5}
+.doc-head .sub{font-size:12px;color:var(--ink2);margin-top:3px}
 
-/* control — inline, no chips */
-.ctl{display:flex;gap:6px;align-items:center;padding:8px 20px;border-bottom:1px solid var(--line);background:var(--surface)}
-.ctl input{padding:5px 8px;font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--line);background:var(--bg);border-radius:0}
-.ctl input:focus{outline:none;border-color:var(--accent)}
-.ctl button{padding:5px 12px;font-size:12px;cursor:pointer;background:var(--ink);color:#fff;border:none;border-radius:0}
+/* control bar */
+.ctl{display:flex;align-items:center;gap:8px;padding:10px 32px;border-bottom:1px solid var(--line);background:var(--surface)}
+.ctl input{padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:13px;border:1px solid var(--line);background:var(--paper);border-radius:6px;color:var(--ink)}
+.ctl input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.ctl button{padding:6px 14px;font-size:12.5px;font-weight:500;cursor:pointer;background:var(--ink);color:#fff;border:none;border-radius:6px;transition:background .15s}
 .ctl button:hover{background:var(--accent)}
 .ctl .ghost{background:transparent;color:var(--ink2);border:1px solid var(--line)}
-.ctl .ghost:hover{background:var(--line2);color:var(--ink)}
-.ctl .stat{margin-left:auto;font-size:11px;color:var(--ink2);font-family:'JetBrains Mono',monospace}
-.ctl .stat b{color:var(--ink)}
+.ctl .ghost:hover{background:var(--line2);color:var(--ink);border-color:var(--ink3)}
+.ctl .stat{margin-left:auto;font-size:12px;color:var(--ink2);font-family:'JetBrains Mono',monospace}
+.ctl .stat b{color:var(--ink);font-weight:500}
 
-/* main — two col, dense */
-.main{display:grid;grid-template-columns:1.6fr 1fr}
-.col{padding:16px 20px}
+/* layout */
+.main{display:grid;grid-template-columns:1.5fr 1fr;gap:0}
+.col{padding:20px 32px}
 .col-l{border-right:1px solid var(--line)}
 .col-r{position:sticky;top:0;align-self:start}
 
-/* sections — divide-y, no cards */
-.sec{padding:10px 0;border-bottom:1px solid var(--line)}
-.sec:last-child{border-bottom:none}
-.h2{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px;letter-spacing:.3px}
-.empty{color:var(--ink3);font-size:12px;font-style:italic}
+/* sections */
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.sec-h{font-family:'Noto Serif SC',serif;font-weight:600;font-size:15px;margin-bottom:10px;color:var(--ink);display:flex;align-items:center;gap:6px}
+.sec-h .badge{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:400;color:var(--ink3);margin-left:auto}
+.empty{color:var(--ink3);font-size:12.5px;font-style:italic}
 
-/* table — dense, 1px rules, mono numbers */
-table{width:100%;border-collapse:collapse;font-size:12px}
-th,td{text-align:left;padding:3px 6px;border-bottom:1px solid var(--line2)}
-th{font-weight:500;color:var(--ink3);font-size:10px;text-transform:uppercase;letter-spacing:.3px}
+/* table */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:5px 8px}
+th{font-weight:500;color:var(--ink2);font-size:11px;border-bottom:1.5px solid var(--line)}
+td{border-bottom:1px solid var(--line2)}
+tr:last-child td{border-bottom:none}
 td.r,th.r{text-align:right;font-family:'JetBrains Mono',monospace}
 .dim{color:var(--ink3)}
 
-/* three-class — inline text, no cards/big numbers */
-.threecls{font-size:12px;color:var(--ink2);font-family:'JetBrains Mono',monospace;margin-bottom:8px;padding:4px 0}
-.threecls .m{color:var(--matched)} .threecls .s{color:var(--accent)} .threecls .g{color:var(--low)}
+/* three-class summary — inline, color-coded, no big numbers */
+.cls{display:flex;gap:16px;font-size:12px;padding:8px 0 10px;border-bottom:1px solid var(--line2);margin-bottom:8px}
+.cls .c{display:flex;align-items:baseline;gap:4px}
+.cls .n{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:14px}
+.cls .lbl{color:var(--ink2);font-size:11px}
+.cls .m .n{color:var(--matched)} .cls .s .n{color:var(--accent)} .cls .g .n{color:var(--low)}
 
-/* related — divide-y list, no card backgrounds, confidence inline */
+/* related list */
 .rp-list{}
-.rp-item{padding:5px 0;border-bottom:1px solid var(--line2);font-size:12px}
+.rp-item{padding:7px 0;border-bottom:1px solid var(--line2)}
 .rp-item:last-child{border-bottom:none}
-.rp-item .nm{font-weight:500}
-.rp-item .meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink3);margin-left:6px}
-.rp-item .pth{font-size:10px;color:var(--ink3);margin-top:2px;font-family:'JetBrains Mono',monospace}
-.rp-item .conf-high{color:var(--high)} .rp-item .conf-medium{color:var(--med)} .rp-item .conf-low{color:var(--low)}
+.rp-item .nm{font-weight:500;font-size:13px}
+.rp-item .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:6px;font-weight:400}
+.rp-item .tag.high{background:#dcfce7;color:var(--high)}
+.rp-item .tag.medium{background:#fef3c7;color:var(--med)}
+.rp-item .tag.low{background:#f3f4f6;color:var(--low)}
+.rp-item .rl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink3);margin-left:6px}
+.rp-item .pth{font-size:11px;color:var(--ink3);margin-top:3px;font-family:'JetBrains Mono',monospace;line-height:1.4}
+.rp-inline{margin-top:6px;font-size:12px;color:var(--ink2);line-height:1.7}
 
-/* events — timeline layout (different family from rp-list) */
+/* events timeline */
 .ev-list{}
-.ev-item{display:grid;grid-template-columns:80px 70px 1fr;gap:8px;padding:4px 0;border-bottom:1px solid var(--line2);font-size:11px}
+.ev-item{display:grid;grid-template-columns:90px 75px 1fr;gap:8px;padding:5px 0;border-bottom:1px solid var(--line2);font-size:12px}
 .ev-item:last-child{border-bottom:none}
-.ev-item .dt{font-family:'JetBrains Mono',monospace;color:var(--ink3)}
-.ev-item .typ{font-family:'JetBrains Mono',monospace;color:var(--accent)}
+.ev-item .dt{font-family:'JetBrains Mono',monospace;color:var(--ink3);font-size:11px}
+.ev-item .typ{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:11px;font-weight:500}
 .ev-item .sm{color:var(--ink2)}
 
 /* disclaimer */
-.disc{font-size:11px;color:var(--ink3);padding:8px 0;line-height:1.6}
+.disc{font-size:11.5px;color:var(--ink3);line-height:1.7;padding:8px 10px;background:var(--line2);border-radius:6px}
 
-/* graph */
-#net{height:380px;border:1px solid var(--line);background:var(--surface);border-radius:0}
-.gtitle{font-size:12px;font-weight:600;margin-bottom:6px}
-.legend{display:flex;gap:10px;font-size:10px;color:var(--ink3);margin-top:6px;flex-wrap:wrap}
-.legend span{display:flex;align-items:center;gap:3px}
-.legend i{width:8px;height:8px;border-radius:0;display:inline-block}
+/* graph card */
+.graph-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:var(--shadow)}
+.graph-card .gtitle{font-family:'Noto Serif SC',serif;font-weight:600;font-size:14px;margin-bottom:8px}
+#net{height:360px;border:1px solid var(--line2);background:var(--paper);border-radius:6px}
+.legend{display:flex;gap:12px;font-size:10.5px;color:var(--ink3);margin-top:8px;flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
 
-/* Q&A — minimal inline */
-.qa{margin:0 20px 16px;border:1px solid var(--line);background:var(--surface);border-radius:0}
-.qa-h{padding:7px 12px;border-bottom:1px solid var(--line);font-size:12px;font-weight:600;display:flex;gap:8px;align-items:baseline}
-.qa-h .hint{font-weight:400;font-size:10px;color:var(--ink3)}
-.qa-b{padding:10px 12px}
-.qa-row{display:flex;gap:6px;margin-bottom:6px}
-.qa-row input{flex:1;padding:5px 8px;font-size:12px;border:1px solid var(--line);background:var(--bg);border-radius:0;font-family:'Noto Sans SC',sans-serif}
-.qa-row input:focus{outline:none;border-color:var(--accent)}
-.qa-out{font-size:12px;white-space:pre-wrap;background:var(--bg);padding:8px;border-radius:0;min-height:32px;border:1px solid var(--line2);font-family:'Noto Sans SC',sans-serif}
-.qa-out .tg{font-size:10px;color:var(--ink3);margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+/* Q&A */
+.qa{margin:0 32px 20px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);overflow:hidden}
+.qa-h{padding:10px 16px;border-bottom:1px solid var(--line);font-family:'Noto Serif SC',serif;font-weight:600;font-size:14px;display:flex;align-items:baseline;gap:8px}
+.qa-h .hint{font-weight:400;font-size:11px;color:var(--ink3)}
+.qa-b{padding:12px 16px}
+.qa-row{display:flex;gap:8px;margin-bottom:8px}
+.qa-row input{flex:1;padding:7px 11px;font-size:13px;border:1px solid var(--line);background:var(--paper);border-radius:6px;font-family:'Noto Sans SC',sans-serif}
+.qa-row input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.qa-row button{padding:7px 16px;font-size:12.5px;font-weight:500;cursor:pointer;background:var(--accent);color:#fff;border:none;border-radius:6px}
+.qa-row button:hover{background:#0c5d56}
+.qa-out{font-size:13px;white-space:pre-wrap;background:var(--paper);padding:10px 12px;border-radius:6px;min-height:36px;border:1px solid var(--line2);font-family:'Noto Sans SC',sans-serif;line-height:1.6}
+.qa-out .tg{font-size:11px;color:var(--ink3);margin-bottom:5px;font-family:'JetBrains Mono',monospace}
 .err{color:var(--accent);font-size:12px}
 
-@media(max-width:780px){.main{grid-template-columns:1fr}.col-l{border-right:none;border-bottom:1px solid var(--line)}.col-r{position:static}}
+@media(max-width:780px){
+  .main{grid-template-columns:1fr}
+  .col-l{border-right:none;border-bottom:1px solid var(--line)}
+  .col-r{position:static}
+  .doc-head,.ctl,.col,.qa{padding-left:16px;padding-right:16px}
+  .cls{flex-direction:column;gap:6px}
+}
 </style>
 </head>
 <body>
 
-<div class="top">
-  <span class="code" id="tcode">------</span>
-  <span class="name" id="tname">关联方穿透底稿</span>
-  <span class="spacer"></span>
-  <span class="badge">判定 LLM=0 / 回查防幻觉 / 非投资建议</span>
+<div class="doc-head">
+  <div class="row1">
+    <span class="code" id="tcode">------</span>
+    <h1 id="tname">关联方穿透底稿</h1>
+    <span class="meta">判定 LLM=0<br>非投资建议</span>
+  </div>
+  <div class="sub">RPScope · A 股关联方穿透与风险底稿系统</div>
 </div>
 
 <div class="ctl">
-  <input id="code" type="text" value="002594" style="width:80px">
-  <button onclick="load()">生成</button>
+  <input id="code" type="text" value="002594" style="width:88px">
+  <button onclick="load()">生成底稿</button>
   <button class="ghost" onclick="load('002594')">比亚迪</button>
   <button class="ghost" onclick="load('300750')">宁德时代</button>
   <span class="stat" id="stat"></span>
 </div>
 
 <div class="main">
-  <div class="col col-l" id="report"><p class="empty">输入代码点生成。</p></div>
+  <div class="col col-l" id="report"><p class="empty">输入股票代码，点生成底稿。</p></div>
   <div class="col col-r">
-    <div class="gtitle">股权与关联路径</div>
-    <div id="net"></div>
-    <div class="legend">
-      <span><i style="background:#e08a2b"></i>主体</span>
-      <span><i style="background:var(--accent)"></i>实控人</span>
-      <span><i style="background:#888"></i>股东</span>
-      <span><i style="background:var(--high)"></i>high</span>
-      <span><i style="background:var(--med)"></i>med</span>
-      <span><i style="background:var(--matched)"></i>验证</span>
+    <div class="graph-card">
+      <div class="gtitle">股权与关联路径</div>
+      <div id="net"></div>
+      <div class="legend">
+        <span><i style="background:#e08a2b"></i>主体</span>
+        <span><i style="background:var(--accent)"></i>实控人</span>
+        <span><i style="background:#888"></i>股东</span>
+        <span><i style="background:var(--high)"></i>high</span>
+        <span><i style="background:var(--med)"></i>medium</span>
+        <span><i style="background:var(--matched)"></i>验证</span>
+      </div>
     </div>
   </div>
 </div>
@@ -165,46 +195,41 @@ async function load(force){
 function renderReport(code,r){
   const co=r.basic||{};
   let h='';
-  // 基本信息 — dense table
-  h+='<div class=sec><div class=h2>基本信息</div><table>'+
+  h+='<div class=sec><div class=sec-h>基本信息<span class=badge>'+code+'</span></div><table>'+
      `<tr><td class=dim style=width:50px>简称</td><td>${co.short_name||dv(co.short_name)}</td><td class=dim style=width:50px>代码</td><td class=mono>${code}</td></tr>`+
      `<tr><td class=dim>行业</td><td>${co.industry||'未知'}</td><td class=dim>上市</td><td class=mono>${dv(co.list_date)}</td></tr></table></div>`;
-  // 股权结构 — table (layout family 1)
-  h+='<div class=sec><div class=h2>股权结构 前十大股东</div><table><thead><tr><th class=r>#</th><th>股东</th><th class=r>比例</th><th>类型</th></tr></thead><tbody>';
+  h+='<div class=sec><div class=sec-h>股权结构 前十大股东</div><table><thead><tr><th class=r style=width:30px>#</th><th>股东</th><th class=r>比例</th><th>类型</th></tr></thead><tbody>';
   (r.holders||[]).forEach((x,i)=>{h+=`<tr><td class=r>${dv(x.holder_rank,i+1)}</td><td>${x.display_name}</td><td class=r>${x.ratio!=null?x.ratio+'%':'<span class=dim>未披露</span>'}</td><td class="dim mono">${dv(x.entity_type)}</td></tr>`});
   if(!(r.holders||[]).length)h+='<tr><td colspan=4 class=empty>无</td></tr>';
   h+='</tbody></table>';
   const cs=r.controllers||[];
-  h+=`<div style="margin-top:4px;font-size:12px"><span class=dim>实控人</span> ${cs.length?cs.map(x=>x.display_name+' ('+dv(x.control_ratio)+'%)').join(' '):'<span class=dim>未披露</span>'}</div></div>`;
-  // 关联方清单 — inline three-class + divide-y list (layout family 2)
+  h+=`<div style="margin-top:8px;font-size:13px;padding-top:6px;border-top:1px solid var(--line2)"><span class=dim>实际控制人</span> ${cs.length?'<b>'+cs.map(x=>x.display_name+'</b> ('+dv(x.control_ratio)+'%)').join(' ')+'</b>':'<span class=dim>未披露</span>'}</div></div>`;
   const rr=r.related||{};
-  h+='<div class=sec><div class=h2>关联方清单</div>';
-  h+=`<div class=threecls>已披露验证 <span class=m>${rr.n_matched}</span> / 系统发现待核查 <span class=s>${rr.n_system_only}</span> / 年报未验证 <span class=g>${rr.n_gold_only}</span></div>`;
-  h+='<div class=rp-list>';
+  h+='<div class=sec><div class=sec-h>关联方清单</div>';
+  h+=`<div class=cls><div class="c m"><span class=n>${rr.n_matched}</span><span class=lbl>已披露验证</span></div><div class="c s"><span class=n>${rr.n_system_only}</span><span class=lbl>系统发现待核查</span></div><div class="c g"><span class=n>${rr.n_gold_only}</span><span class=lbl>年报未验证</span></div></div>`;
+  h+='<div class=rp-list">';
   (rr.system_only||[]).slice(0,18).forEach(s=>{
     const cf=s.confidence;
-    h+=`<div class=rp-item><span class=nm>${s.name}</span><span class="meta conf-${cf}">${cf}</span><span class=meta>${s.rule}</span>${s.path?`<div class=pth>${s.path}</div>`:''}</div>`;
+    h+=`<div class=rp-item><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${s.rule}</span>${s.path?`<div class=pth>${s.path}</div>`:''}</div>`;
   });
   h+='</div>';
-  h+=`<div style="margin-top:4px;font-size:11px"><span class=dim>已披露验证</span> ${(rr.matched||[]).map(x=>x.name).join(' ')||'<span class=dim>无</span>'}</div>`;
-  h+=`<div style="font-size:11px"><span class=dim>年报未验证</span> ${(rr.gold_only||[]).map(x=>x.name).join(' ')||'<span class=dim>无</span>'}</div></div>`;
-  // 风险事件 — timeline grid (layout family 3, different from rp-list)
-  h+='<div class=sec><div class=h2>风险事件时间线</div><div class=ev-list>';
+  h+=`<div class=rp-inline"><span class=dim>已披露验证:</span> ${(rr.matched||[]).map(x=>x.name).join(', ')||'<span class=dim>无</span>'}</div>`;
+  h+=`<div class=rp-inline"><span class=dim>年报未验证:</span> ${(rr.gold_only||[]).map(x=>x.name).join(', ')||'<span class=dim>无</span>'}</div></div>`;
+  h+='<div class=sec><div class=sec-h>风险事件时间线</div><div class=ev-list">';
   (r.events||[]).slice(0,12).forEach(e=>{h+=`<div class=ev-item><span class=dt>${dv(e.event_date)}</span><span class=typ>${e.event_type}</span><span class=sm>${(e.summary||'').slice(0,50)}</span></div>`});
   if(!(r.events||[]).length)h+='<span class=empty>无</span>';
   h+='</div></div>';
-  // 口径
-  h+=`<div class=sec><div class=h2>口径与限制</div><div class=disc>${r.disclaimer.disclaimer}<br><span class=dim>数据来源 ${r.disclaimer.data_sources}。覆盖 ${r.disclaimer.coverage}。</span></div></div>`;
+  h+=`<div class=sec><div class=sec-h>口径与限制</div><div class=disc>${r.disclaimer.disclaimer}<br><br><span class=dim>数据来源: ${r.disclaimer.data_sources}<br>覆盖: ${r.disclaimer.coverage}</span></div></div>`;
   document.getElementById('report').innerHTML=h;
 }
 function drawNet(code,r){
   const nodes=[],edges=[];let i=0;
   nodes.push({id:code,label:code,color:'#e08a2b',shape:'box',font:{color:'#fff',size:13}});
-  (r.controllers||[]).forEach(c=>{const id='c'+i++;nodes.push({id,label:c.display_name,color:'#2563eb',font:{color:'#fff',size:10}});edges.push({from:id,to:code,label:dv(c.control_ratio)+'%',arrows:'to',color:'#2563eb',font:{size:8}})});
-  (r.holders||[]).slice(0,8).forEach(x=>{if((r.controllers||[]).some(c=>c.display_name===x.display_name))return;const id='h'+i++;nodes.push({id,label:x.display_name,color:'#888',font:{color:'#fff',size:9}});edges.push({from:id,to:code,label:x.ratio!=null?x.ratio+'%':'',arrows:'to',color:'#ccc',font:{size:8}})});
-  (r.related.system_only||[]).slice(0,12).forEach(s=>{const id='p'+i++;const col=s.confidence==='high'?'#16a34a':(s.confidence==='medium'?'#ca8a04':'#71717a');nodes.push({id,label:s.name,color:col,font:{color:'#fff',size:9}});edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence==='low',color:'#ccc',font:{size:8}})});
-  (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:'#1d4ed8',font:{color:'#fff',size:9}});edges.push({from:code,to:id,label:'gold',arrows:'to',color:'#1d4ed8',font:{size:8}})});
-  new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{layout:{improvedLayout:true},physics:{stabilization:true},nodes:{shape:'dot',size:12},edges:{smooth:{type:'continuous'}}});
+  (r.controllers||[]).forEach(c=>{const id='c'+i++;nodes.push({id,label:c.display_name,color:'#0f766e',font:{color:'#fff',size:10}});edges.push({from:id,to:code,label:dv(c.control_ratio)+'%',arrows:'to',color:'#0f766e',font:{size:9}})});
+  (r.holders||[]).slice(0,8).forEach(x=>{if((r.controllers||[]).some(c=>c.display_name===x.display_name))return;const id='h'+i++;nodes.push({id,label:x.display_name,color:'#888',font:{color:'#fff',size:9}});edges.push({from:id,to:code,label:x.ratio!=null?x.ratio+'%':'',arrows:'to',color:'#cbd5e1',font:{size:9}})});
+  (r.related.system_only||[]).slice(0,12).forEach(s=>{const id='p'+i++;const col=s.confidence==='high'?'#15803d':(s.confidence==='medium'?'#b45309':'#6b7280');nodes.push({id,label:s.name,color:col,font:{color:'#fff',size:9}});edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence==='low',color:'#cbd5e1',font:{size:9}})});
+  (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:'#1e40af',font:{color:'#fff',size:9}});edges.push({from:code,to:id,label:'验证',arrows:'to',color:'#1e40af',font:{size:9}})});
+  new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{layout:{improvedLayout:true},physics:{stabilization:true,barnesHut:{springLength:130}},nodes:{shape:'dot',size:13},edges:{smooth:{type:'continuous'}}});
 }
 async function ask(){
   const q=document.getElementById('q').value.trim();if(!q)return;
