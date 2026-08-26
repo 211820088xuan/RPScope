@@ -12,7 +12,8 @@ SCHEMA = Path(__file__).resolve().parent / "schema.sql"
 class Store:
     def __init__(self, path: str | Path = "rpscope.db") -> None:
         self.path = Path(path)
-        self.conn = sqlite3.connect(self.path)
+        # check_same_thread=False: FastAPI 同步路由跑在线程池, 需跨线程访问(read 为主, 写加锁)
+        self.conn = sqlite3.connect(self.path, check_same_thread=False)
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.row_factory = sqlite3.Row
         self.init_schema()
