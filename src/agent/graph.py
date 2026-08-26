@@ -40,7 +40,9 @@ def _fmt_fact(r: dict) -> str:
         lines.append("前十大股东:")
         for h in hs[:10]:
             tag = "[通道]" if h.get("is_channel") else ""
-            lines.append(f"  {h.get('holder_rank')}. {h.get('display_name')} {h.get('ratio')}%{tag}")
+            ratio = h.get("ratio")
+            ratio_s = f"{ratio}%" if ratio is not None else "未披露"
+            lines.append(f"  {h.get('holder_rank')}. {h.get('display_name')} {ratio_s}{tag}")
     cs = r.get("controllers", [])
     if cs:
         lines.append("实际控制人:")

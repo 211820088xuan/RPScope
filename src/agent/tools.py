@@ -10,12 +10,19 @@ from src.store.db import Store
 
 
 def tool_fact(store: Store, code: str) -> dict:
-    """事实查询: 公司基本信息 + 前十大股东 + 实控人(直接 SQL, <500ms)。"""
+    """事实查询: 公司基本信息 + 前十大股东(批量接口=真前十大, 按 display_name 去重, ratio 从 ggcg 补) + 实控人。"""
     co = store.conn.execute("SELECT * FROM company WHERE stock_code=?", (code,)).fetchone()
+    # 批量接口=真前十大股东(按插入顺序=排名), 按 display_name 去重; ratio 关联 ggcg(MAX)
     holders = [dict(r) for r in store.conn.execute(
-        "SELECT h.ratio, h.holder_rank, e.display_name, e.entity_type, e.is_channel "
+        "SELECT e.display_name, e.entity_type, "
+        "  (SELECT MAX(h2.ratio) FROM holding h2 JOIN entity e2 ON h2.entity_id=e2.entity_id "
+        "   WHERE h2.stock_code=? AND e2.display_name=e.display_name AND h2.ratio IS NOT NULL) AS ratio "
         "FROM holding h JOIN entity e ON h.entity_id=e.entity_id "
-        "WHERE h.stock_code=? ORDER BY h.holder_rank LIMIT 10", (code,)).fetchall()]
+        "WHERE h.stock_code=? AND e.is_channel=0 AND h.source='stock_gdfx_free_holding_detail_em' "
+        "GROUP BY e.display_name, e.entity_type ORDER BY MIN(h.id) LIMIT 10",
+        (code, code,)).fetchall()]
+    for i, h in enumerate(holders):
+        h["holder_rank"] = i + 1
     ctrl = [dict(r) for r in store.conn.execute(
         "SELECT ac.control_ratio, e.display_name FROM actual_controller ac "
         "JOIN entity e ON ac.entity_id=e.entity_id WHERE ac.stock_code=? AND e.is_channel=0",

@@ -7,128 +7,106 @@
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --paper:#faf8f3; --ink:#16181d; --ink-soft:#4a4a52; --rule:#d8d4c8; --rule-soft:#ebe7dc;
-  --seal:#8b2820; --seal-soft:#c14a3a;
-  --high:#2f6b4f; --med:#b5651d; --low:#6b6b6b; --matched:#1f4e79;
-  --chip:#f1ede2;
+  --paper:#faf8f3; --ink:#16181d; --ink2:#52525c; --rule:#d8d4c8; --rule2:#ece8dc;
+  --accent:#8b2820; --high:#2f6b4f; --med:#b5651d; --low:#8a8a8a; --matched:#1f4e79;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:'Noto Sans SC',system-ui,sans-serif;font-size:14px;line-height:1.6}
+  font-family:'Noto Sans SC',system-ui,sans-serif;font-size:13.5px;line-height:1.65}
 .mono{font-family:'JetBrains Mono',Consolas,monospace}
 .serif{font-family:'Noto Serif SC',serif}
 
-/* header band */
-header{display:flex;align-items:center;gap:18px;padding:22px 32px 18px;border-bottom:2px solid var(--ink);
-  background:linear-gradient(180deg,#fff 0%,var(--paper) 100%)}
-.seal{flex:none;width:58px;height:58px;background:var(--seal);border-radius:6px;color:#fff;
-  display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;
-  font-weight:500;font-size:13px;letter-spacing:.5px;transform:rotate(-3deg);
-  box-shadow:0 1px 0 rgba(0,0,0,.15),inset 0 0 0 2px rgba(255,255,255,.12);
-  border:2px solid var(--seal-soft);position:relative}
-.seal::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.18),transparent 60%);border-radius:4px}
-.brand{flex:1}
-.brand h1{margin:0;font-family:'Noto Serif SC',serif;font-weight:700;font-size:22px;letter-spacing:-.2px}
-.brand .sub{font-size:12px;color:var(--ink-soft);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
-.meta{font-size:11px;color:var(--ink-soft);text-align:right;line-height:1.5}
+/* header — flat, no gradient, restrained code chip (not a rotated seal) */
+header{display:flex;align-items:baseline;gap:14px;padding:18px 36px 14px;border-bottom:1.5px solid var(--ink)}
+.codechip{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);
+  border:1px solid var(--accent);padding:1px 7px;letter-spacing:.5px}
+header h1{margin:0;font-family:'Noto Serif SC',serif;font-weight:700;font-size:19px;letter-spacing:-.2px}
+header .sub{font-size:11px;color:var(--ink2);letter-spacing:.5px;margin-left:auto}
 
-/* control */
-.bar{display:flex;gap:10px;align-items:center;padding:14px 32px;border-bottom:1px solid var(--rule);background:#fff}
-.bar label{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:1px}
-input[type=text]{padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:14px;border:1px solid var(--rule);
-  border-radius:3px;background:var(--paper);color:var(--ink)}
-input[type=text]:focus{outline:none;border-color:var(--seal);box-shadow:0 0 0 2px rgba(139,40,32,.12)}
-button{padding:7px 16px;font-family:'Noto Sans SC',sans-serif;font-size:13px;font-weight:500;cursor:pointer;
-  background:var(--ink);color:#fff;border:none;border-radius:3px;letter-spacing:.3px}
-button:hover{background:var(--seal)}
-.btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--rule)}
-.btn-ghost:hover{background:var(--chip);color:var(--ink)}
-.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;justify-content:flex-end}
-.chip{font-size:11px;padding:2px 8px;background:var(--chip);border-radius:10px;color:var(--ink-soft);font-family:'JetBrains Mono',monospace}
-.chip.red{color:var(--seal);background:#f7e8e5}
-.chip.green{color:var(--high);background:#e3efe7}
+/* control — plain, no chips */
+.ctrl{display:flex;gap:8px;align-items:center;padding:12px 36px;border-bottom:1px solid var(--rule);background:#fff}
+.ctrl label{font-size:11px;color:var(--ink2)}
+input[type=text]{padding:6px 9px;font-family:'JetBrains Mono',monospace;font-size:13px;
+  border:1px solid var(--rule);background:var(--paper);border-radius:2px}
+input[type=text]:focus{outline:none;border-color:var(--accent)}
+button{padding:6px 13px;font-size:12.5px;cursor:pointer;background:var(--ink);color:#fff;border:none;border-radius:2px}
+button:hover{background:var(--accent)}
+.btn-q{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+.btn-q:hover{background:#f0ece0;color:var(--ink)}
+.statline{margin-left:auto;font-size:12px;color:var(--ink2);font-family:'JetBrains Mono',monospace}
+.statline b{color:var(--ink)}
 
 /* layout */
-main{display:grid;grid-template-columns:1.5fr 1fr;gap:0;min-height:60vh}
-.col{padding:24px 32px}
-.col-left{border-right:1px solid var(--rule)}
-.col-right{position:sticky;top:0;align-self:start;background:#fcfaf5}
+main{display:grid;grid-template-columns:1.55fr 1fr}
+.col{padding:22px 36px}
+.col-l{border-right:1px solid var(--rule)}
+.col-r{position:sticky;top:0;align-self:start;background:#fcfaf4}
 
-section{margin-bottom:28px}
-h2{font-family:'Noto Serif SC',serif;font-weight:700;font-size:15px;margin:0 0 10px;padding-bottom:6px;
-  border-bottom:1px solid var(--rule);display:flex;align-items:baseline;gap:8px}
-h2 .num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--seal);font-weight:500}
-.empty{color:var(--low);font-style:italic;font-size:13px}
+section{margin-bottom:24px}
+h2{font-family:'Noto Serif SC',serif;font-weight:700;font-size:14.5px;margin:0 0 8px;
+  padding-bottom:5px;border-bottom:1px solid var(--rule)}
+.empty{color:var(--low);font-style:italic;font-size:12.5px}
 
-/* holders */
-ul{list-style:none;padding:0;margin:0}
-.holder{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dotted var(--rule-soft);font-size:13px}
-.holder .nm{flex:1}
-.holder .pct{font-family:'JetBrains Mono',monospace;color:var(--ink-soft)}
-.ctrl-line{padding:6px 0;font-size:13px}
-.ctrl-line .lbl{color:var(--ink-soft);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-right:8px}
+/* holders table — dense, hairline */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--rule2)}
+th{font-weight:500;color:var(--ink2);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+td.r,th.r{text-align:right;font-family:'JetBrains Mono',monospace}
+.dim{color:var(--low)}
 
-/* related party cards */
-.rp{margin:4px 0;padding:8px 10px;border-left:3px solid var(--low);background:#fff;font-size:13px}
+/* three-class — compact hairline row, no giant numbers */
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1.5px solid var(--ink);margin-bottom:10px}
+.three .t{padding:8px 10px;border-right:1px solid var(--rule2)}
+.three .t:last-child{border-right:none}
+.three .lbl{font-size:10.5px;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px}
+.three .n{font-family:'Noto Serif SC',serif;font-size:17px;font-weight:700;margin-top:2px}
+.three .t.s2 .n{color:var(--accent)}
+.three .t.s3 .n{color:var(--low)}
+.three .t.s2 .lbl{color:var(--accent)}
+.three .hint{font-size:10px;color:var(--ink2);margin-top:1px}
+
+/* related cards — hairline left by confidence, no big badges */
+.rp{margin:2px 0;padding:5px 9px;border-left:2px solid var(--low);font-size:12.5px;background:#fff}
 .rp.high{border-color:var(--high)}
 .rp.med{border-color:var(--med)}
-.rp.low{border-color:var(--low)}
 .rp.matched{border-color:var(--matched);background:#eef3f8}
-.rp .head{display:flex;justify-content:space-between;align-items:baseline}
 .rp .nm{font-weight:500}
-.rp .rule{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-soft)}
-.rp .path{font-size:11px;color:var(--low);margin-top:4px;font-family:'JetBrains Mono',monospace;line-height:1.4}
-.badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:2px;margin-right:6px;letter-spacing:.5px}
-.badge.high{background:var(--high);color:#fff}
-.badge.med{background:var(--med);color:#fff}
-.badge.low{background:var(--low);color:#fff}
-.badge.matched{background:var(--matched);color:#fff}
-
-/* three-class header */
-.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
-.three .t{padding:8px;border-top:2px solid var(--rule)}
-.three .t.s2{border-top-color:var(--seal)}
-.three .t.s3{border-top-color:var(--low)}
-.three .t .lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink-soft)}
-.three .t .n{font-family:'Noto Serif SC',serif;font-size:22px;font-weight:700}
-.three .t.s2 .n{color:var(--seal)}
-.three .t.s3 .n{color:var(--low)}
+.rp .rl{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink2);margin-left:6px}
+.rp .pth{font-size:10.5px;color:var(--low);margin-top:3px;font-family:'JetBrains Mono',monospace;line-height:1.4}
 
 /* events */
-.ev{display:flex;gap:10px;padding:4px 0;border-bottom:1px dotted var(--rule-soft);font-size:12px}
-.ev .typ{font-family:'JetBrains Mono',monospace;color:var(--seal);width:80px;flex:none}
-.ev .dt{color:var(--ink-soft);font-family:'JetBrains Mono',monospace;width:90px;flex:none}
+.ev{display:flex;gap:8px;padding:3px 0;border-bottom:1px solid var(--rule2);font-size:12px}
+.ev .typ{font-family:'JetBrains Mono',monospace;color:var(--accent);width:70px;flex:none;font-size:11px}
+.ev .dt{color:var(--ink2);font-family:'JetBrains Mono',monospace;width:88px;flex:none;font-size:11px}
 
-/* disclaimer */
-.disc{font-size:11px;color:var(--ink-soft);background:#f3efe3;padding:10px 12px;border-left:3px solid var(--rule);line-height:1.6}
+.disc{font-size:11px;color:var(--ink2);background:#f3efe3;padding:9px 11px;border-left:2px solid var(--rule);line-height:1.6}
 
-/* network */
-#net{height:380px;border:1px solid var(--rule);background:#fff;border-radius:3px}
-.graph-title{font-family:'Noto Serif SC',serif;font-weight:700;font-size:15px;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
-.legend{display:flex;gap:10px;font-size:10px;color:var(--ink-soft);margin-top:8px;flex-wrap:wrap}
+/* graph */
+.gtitle{font-family:'Noto Serif SC',serif;font-weight:700;font-size:14.5px;margin:0 0 8px;padding-bottom:5px;border-bottom:1px solid var(--rule)}
+#net{height:400px;border:1px solid var(--rule);background:#fff;border-radius:2px}
+.legend{display:flex;gap:12px;font-size:10px;color:var(--ink2);margin-top:7px;flex-wrap:wrap}
 .legend span{display:flex;align-items:center;gap:4px}
-.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.legend i{width:9px;height:9px;border-radius:1px;display:inline-block}
 
-/* Q&A */
-.qa{margin:0 32px 24px;border:1px solid var(--rule);border-radius:4px;background:#fff;overflow:hidden}
-.qa-head{padding:10px 14px;border-bottom:1px solid var(--rule);background:var(--chip);display:flex;gap:8px;align-items:center}
-.qa-head .ttl{font-family:'Noto Serif SC',serif;font-weight:700;font-size:13px;flex:1}
-.qa-body{padding:12px 14px}
+/* Q&A — minimal */
+.qa{margin:0 36px 22px;border:1px solid var(--rule);border-radius:2px;background:#fff}
+.qa-h{padding:9px 13px;border-bottom:1px solid var(--rule);font-family:'Noto Serif SC',serif;font-weight:700;font-size:13px;display:flex;gap:8px;align-items:baseline}
+.qa-h .hint{font-weight:400;font-size:11px;color:var(--ink2)}
+.qa-b{padding:11px 13px}
 .qa-row{display:flex;gap:8px;margin-bottom:8px}
 .qa-row input{flex:1}
-.qa-out{font-size:13px;white-space:pre-wrap;background:var(--paper);padding:10px;border-radius:3px;min-height:40px;border:1px solid var(--rule-soft);font-family:'Noto Sans SC',sans-serif}
-.qa-out .tagrow{font-size:11px;color:var(--ink-soft);margin-bottom:6px;font-family:'JetBrains Mono',monospace}
-.err{color:var(--seal);font-size:12px}
+.qa-out{font-size:12.5px;white-space:pre-wrap;background:var(--paper);padding:9px;border-radius:2px;min-height:36px;border:1px solid var(--rule2)}
+.qa-out .tg{font-size:11px;color:var(--ink2);margin-bottom:5px;font-family:'JetBrains Mono',monospace}
+.err{color:var(--accent);font-size:12px}
 
-/* responsive */
 @media(max-width:780px){
   main{grid-template-columns:1fr}
-  .col-left{border-right:none;border-bottom:1px solid var(--rule)}
-  .col-right{position:static}
-  header,.bar,.col,.qa{padding-left:16px;padding-right:16px}
+  .col-l{border-right:none;border-bottom:1px solid var(--rule)}
+  .col-r{position:static}
+  header,.ctrl,.col,.qa{padding-left:18px;padding-right:18px}
   .three{grid-template-columns:1fr}
 }
 </style>
@@ -136,126 +114,135 @@ ul{list-style:none;padding:0;margin:0}
 <body>
 
 <header>
-  <div class="seal mono" id="sealBox">------</div>
-  <div class="brand">
-    <h1>关联方穿透与风险底稿</h1>
-    <div class="sub">RPScope · A-Share Related-Party Penetration</div>
-  </div>
-  <div class="meta">
-    判定 100% 确定性 · LLM=0<br>
-    <span style="color:var(--seal)">输出候选与证据 · 非投资建议</span>
-  </div>
+  <span class="codechip" id="codechip">------</span>
+  <h1 id="coname">关联方穿透与风险底稿</h1>
+  <span class="sub">RPScope · 判定确定性 LLM=0 · 输出候选非投资建议</span>
 </header>
 
-<div class="bar">
-  <label>股票代码</label>
-  <input id="code" type="text" value="002594" style="width:100px">
+<div class="ctrl">
+  <label>代码</label>
+  <input id="code" type="text" value="002594" style="width:88px">
   <button onclick="load()">生成底稿</button>
-  <button class="btn-ghost" onclick="load('002594')">比亚迪</button>
-  <button class="btn-ghost" onclick="load('300750')">宁德时代</button>
-  <div class="chips" id="chips"></div>
+  <button class="btn-q" onclick="load('002594')">比亚迪</button>
+  <button class="btn-q" onclick="load('300750')">宁德时代</button>
+  <span class="statline" id="stat"></span>
 </div>
 
 <main>
-  <div class="col col-left" id="report">
-    <p class="empty">输入股票代码，点「生成底稿」。</p>
-  </div>
-  <div class="col col-right">
-    <div class="graph-title">关联路径图</div>
+  <div class="col col-l" id="report"><p class="empty">输入股票代码，点「生成底稿」。</p></div>
+  <div class="col col-r">
+    <div class="gtitle">股权与关联路径图</div>
     <div id="net"></div>
     <div class="legend">
-      <span><i style="background:#f90"></i>主体公司</span>
-      <span><i style="background:var(--high)"></i>high</span>
+      <span><i style="background:#e08a2b"></i>主体</span>
+      <span><i style="background:var(--accent)"></i>实控人</span>
+      <span><i style="background:#777"></i>股东</span>
+      <span><i style="background:var(--high)"></i>关联·high</span>
       <span><i style="background:var(--med)"></i>medium</span>
-      <span><i style="background:var(--low)"></i>low</span>
-      <span><i style="background:var(--matched)"></i>gold 验证</span>
+      <span><i style="background:var(--matched)"></i>gold验证</span>
     </div>
   </div>
 </main>
 
 <div class="qa">
-  <div class="qa-head">
-    <span class="ttl">问答</span>
-    <span style="font-size:11px;color:var(--ink-soft)">意图路由 · 简单题不调 LLM · 回查防幻觉</span>
-  </div>
-  <div class="qa-body">
+  <div class="qa-h">问答<span class="hint">意图路由 · 简单题不调 LLM · 回查防幻觉</span></div>
+  <div class="qa-b">
     <div class="qa-row">
-      <input id="q" type="text" value="002594的前十大股东和实控人" placeholder="如 002594的关联方 / 002594和300750是什么关系 / 002594有哪些风险事件">
+      <input id="q" type="text" value="002594的前十大股东和实控人" placeholder="002594的关联方 / 002594和300750是什么关系 / 002594有哪些风险事件">
       <button onclick="ask()">问</button>
     </div>
-    <div class="qa-out" id="ans"><span style="color:var(--low)">点「问」看答案。</span></div>
+    <div class="qa-out" id="ans"><span class="dim">点「问」看答案。</span></div>
   </div>
 </div>
 
 <script>
+function dv(v,def='—'){ return (v===null||v===undefined||v===''||v==='None') ? def : v; }
 async function load(force){
   const code=(force||document.getElementById('code').value).trim();
   document.getElementById('code').value=code;
-  document.getElementById('sealBox').textContent=code;
-  document.getElementById('chips').innerHTML='<span class=chip>加载中…</span>';
+  document.getElementById('codechip').textContent=code;
+  document.getElementById('coname').textContent='加载中…';
+  document.getElementById('stat').textContent='';
   const rep=document.getElementById('report');rep.innerHTML='<p class=empty>加载中…</p>';
   let r;
   try{ r=await fetch('/api/report/'+code).then(async x=>x.ok?x.json():Promise.reject(await x.text())); }
   catch(e){ rep.innerHTML='<p class=err>错误: '+String(e).slice(0,200)+'</p>'; return; }
   if(!r||r.error){rep.innerHTML='<p class=err>'+(r&&r.error||'无数据')+'</p>';return;}
-  document.getElementById('chips').innerHTML=
-    '<span class="chip green">matched '+r.related.n_matched+'</span>'+
-    '<span class="chip red">系统发现 '+r.related.n_system_only+'</span>'+
-    '<span class="chip">年报未验证 '+r.related.n_gold_only+'</span>'+
-    '<span class="chip">事件 '+r.events.length+'</span>';
+  const co=r.basic||{};
+  document.getElementById('coname').textContent=(co.short_name||'')+' 关联方穿透底稿';
+  const rr=r.related||{};
+  document.getElementById('stat').innerHTML=
+    `已披露验证 <b>${rr.n_matched}</b> · 系统发现 <b>${rr.n_system_only}</b> · 年报未验证 <b>${rr.n_gold_only}</b> · 事件 ${r.events.length}`;
   renderReport(code,r);
   drawNet(code,r);
 }
 function renderReport(code,r){
   const co=r.basic||{};
   let h='';
-  h+='<section><h2><span class=num>01</span>基本信息</h2>'+
-     '<div class=ctrl-line><span class=lbl>简称</span>'+(co.short_name||'—')+'</div>'+
-     '<div class=ctrl-line><span class=lbl>代码</span><span class=mono>'+code+'</span></div>'+
-     '<div class=ctrl-line><span class=lbl>行业</span>'+(co.industry||'未知')+'</div></section>';
-  h+='<section><h2><span class=num>02</span>股权结构</h2><ul>';
-  (r.holders||[]).slice(0,10).forEach(x=>h+='<li class=holder><span class=nm>'+(x.holder_rank||'')+'. '+x.display_name+'</span><span class=pct>'+(x.ratio!=null?x.ratio+'%':'—')+'</span></li>');
-  h+='</ul><div class=ctrl-line style="margin-top:8px"><span class=lbl>实控人</span>'+((r.controllers||[]).map(x=>x.display_name+' ('+x.control_ratio+'%)').join('， ')||'未披露')+'</div></section>';
-  const rr=r.related||{};
-  h+='<section><h2><span class=num>03</span>关联方清单</h2>'+
-    '<div class=three>'+
-      '<div class=t><div class=lbl>3.1 已披露·系统验证</div><div class=n>'+rr.n_matched+'</div></div>'+
-      '<div class=t s2><div class=lbl>3.2 系统发现·待核查</div><div class=n>'+rr.n_system_only+'</div><div class=lbl style="color:var(--seal)">核心价值区</div></div>'+
-      '<div class=t s3><div class=lbl>3.3 年报披露·系统未验证</div><div class=n>'+rr.n_gold_only+'</div><div class=lbl>诚实盲区</div></div>'+
-    '</div>';
-  h+='<ul>';
-  (rr.system_only||[]).slice(0,18).forEach(s=>{
-    const bc=s.confidence==='high'?'high':(s.confidence==='medium'?'med':'low');
-    h+='<li class="rp '+bc+'"><div class=head><span class=nm><span class="badge '+bc+'">'+s.confidence+'</span>'+s.name+'</span><span class=rule>'+s.rule+'</span></div>'+
-       (s.path?'<div class=path>'+s.path+'</div>':'')+'</li>';
+  h+='<section><h2>基本信息</h2>'+
+     '<table><tr><td style="width:60px" class="dim">简称</td><td>'+(co.short_name||'—')+'</td>'+
+     '<td style="width:60px" class="dim">代码</td><td class=mono>'+code+'</td></tr>'+
+     '<tr><td class="dim">行业</td><td>'+(co.industry||'未知')+'</td>'+
+     '<td class="dim">上市</td><td class=mono>'+(co.list_date||'—')+'</td></tr></table></section>';
+  h+='<section><h2>股权结构 · 前十大股东</h2><table><thead><tr><th>#</th><th>股东</th><th class=r>比例</th><th>类型</th></tr></thead><tbody>';
+  (r.holders||[]).forEach((x,i)=>{
+    h+=`<tr><td class=r>${dv(x.holder_rank,String(i+1))}</td><td>${x.display_name}</td><td class=r>${x.ratio!=null?x.ratio+'%':'<span class=dim>未披露</span>'}</td><td class="dim mono">${dv(x.entity_type)}</td></tr>`;
   });
-  h+='</ul><div class=ctrl-line style="margin-top:6px"><span class=lbl>3.1</span>'+((rr.matched||[]).map(x=>x.name).join('， ')||'无')+'</div>';
-  h+='<div class=ctrl-line><span class=lbl>3.3</span>'+((rr.gold_only||[]).map(x=>x.name).join('， ')||'无')+'</div></section>';
-  h+='<section><h2><span class=num>04</span>风险事件时间线</h2>';
-  (r.events||[]).slice(0,12).forEach(e=>h+='<div class=ev><span class=typ>'+e.event_type+'</span><span class=dt>'+(e.event_date||'—')+'</span><span>'+(e.summary||'').slice(0,40)+'</span></div>');
-  if(!(r.events||[]).length)h+='<p class=empty>无事件</p>';
+  if(!(r.holders||[]).length)h+='<tr><td colspan=4 class=empty>无</td></tr>';
+  h+='</tbody></table>';
+  const cs=r.controllers||[];
+  h+=`<div style="margin-top:6px;font-size:12.5px"><span class="dim">实控人：</span>${cs.length?cs.map(x=>x.display_name+' ('+dv(x.control_ratio)+'%)').join('， '):'<span class=dim>未披露</span>'}</div></section>`;
+  h+='<section><h2>关联方清单</h2>';
+  h+=`<div class=three>`+
+     `<div class=t><div class=lbl>3.1 已披露·系统验证</div><div class=n>${rr.n_matched}</div><div class=hint>年报与系统一致</div></div>`+
+     `<div class=t s2><div class=lbl>3.2 系统发现·待核查</div><div class=n>${rr.n_system_only}</div><div class=hint>核心价值区</div></div>`+
+     `<div class=t s3><div class=lbl>3.3 年报披露·系统未验证</div><div class=n>${rr.n_gold_only}</div><div class=hint>诚实呈现盲区</div></div>`+
+     `</div>`;
+  (rr.system_only||[]).slice(0,18).forEach(s=>{
+    const bc=s.confidence==='high'?'high':(s.confidence==='medium'?'med':'');
+    h+=`<div class="rp ${bc}"><span class=nm>${s.name}</span><span class=rl>${s.rule} · ${s.confidence}</span>${s.path?`<div class=pth>${s.path}</div>`:''}</div>`;
+  });
+  h+=`<div style="margin-top:6px;font-size:12px"><span class="dim">已披露验证：</span>${(rr.matched||[]).map(x=>x.name).join('， ')||'<span class=dim>无</span>'}</div>`;
+  h+=`<div style="font-size:12px"><span class="dim">年报未验证：</span>${(rr.gold_only||[]).map(x=>x.name).join('， ')||'<span class=dim>无</span>'}</div></section>`;
+  h+='<section><h2>风险事件时间线</h2>';
+  (r.events||[]).slice(0,12).forEach(e=>h+=`<div class=ev><span class=typ>${e.event_type}</span><span class=dt>${dv(e.event_date)}</span><span>${(e.summary||'').slice(0,42)}</span></div>`);
+  if(!(r.events||[]).length)h+='<p class=empty>无</p>';
   h+='</section>';
-  h+='<section><h2><span class=num>05</span>口径与限制</h2><div class=disc>'+(r.disclaimer.disclaimer||'')+'<br><br>数据来源: '+(r.disclaimer.data_sources||'')+'。覆盖: '+(r.disclaimer.coverage||'')+'。</div></section>';
+  h+=`<section><h2>口径与限制</h2><div class=disc>${r.disclaimer.disclaimer}<br><br><span class=dim>数据来源：${r.disclaimer.data_sources}。覆盖：${r.disclaimer.coverage}。</span></div></section>`;
   document.getElementById('report').innerHTML=h;
 }
 function drawNet(code,r){
-  const nodes=[{id:code,label:code,color:{background:'#f90',border:'#c70'},shape:'box',font:{color:'#fff'}}],edges=[];let i=0;
-  (r.related.system_only||[]).slice(0,15).forEach(s=>{const id='p'+i++;
-    const col=s.confidence==='high'?'#2f6b4f':(s.confidence==='medium'?'#b5651d':'#6b6b6b');
-    nodes.push({id,label:s.name,color:{background:col,border:col},font:{color:'#fff',size:11}});
-    edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence==='low',font:{size:9}});});
-  (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:{background:'#1f4e79',border:'#1f4e79'},font:{color:'#fff',size:11}});edges.push({from:code,to:id,label:'gold',arrows:'to',font:{size:9}});});
+  const nodes=[],edges=[];let i=0;
+  nodes.push({id:code,label:code,color:{background:'#e08a2b',border:'#b5681a'},shape:'box',font:{color:'#fff',size:14}});
+  // 实控人(红)
+  (r.controllers||[]).forEach(c=>{
+    const id='c'+i++;nodes.push({id,label:c.display_name,color:{background:'#8b2820',border:'#8b2820'},font:{color:'#fff',size:11}});
+    edges.push({from:id,to:code,label:'控制 '+(c.control_ratio||'')+'%',arrows:'to',font:{size:9,color:'#8b2820'},color:{color:'#8b2820'}});
+  });
+  // 前十大股东(灰, 持股)
+  (r.holders||[]).slice(0,8).forEach(x=>{
+    if((r.controllers||[]).some(c=>c.display_name===x.display_name))return;
+    const id='h'+i++;nodes.push({id,label:x.display_name,color:{background:'#777',border:'#555'},font:{color:'#fff',size:10}});
+    edges.push({from:id,to:code,label:x.ratio!=null?x.ratio+'%':'持股',arrows:'to',font:{size:9},color:{color:'#bbb'}});
+  });
+  // 关联方候选
+  (r.related.system_only||[]).slice(0,12).forEach(s=>{
+    const id='p'+i++;const col=s.confidence==='high'?'#2f6b4f':(s.confidence==='medium'?'#b5651d':'#8a8a8a');
+    nodes.push({id,label:s.name,color:{background:col,border:col},font:{color:'#fff',size:10}});
+    edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence==='low',font:{size:9}});
+  });
+  (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:{background:'#1f4e79',border:'#1f4e79'},font:{color:'#fff',size:10}});edges.push({from:code,to:id,label:'gold',arrows:'to',font:{size:9}});});
   new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},
-    {layout:{improvedLayout:true},physics:{stabilization:true},nodes:{shape:'dot',size:14},edges:{color:{color:'#bbb',highlight:'#8b2820'}}});
+    {layout:{improvedLayout:true},physics:{stabilization:true,barnesHut:{springLength:120}},nodes:{shape:'dot',size:13},edges:{color:{color:'#bbb',highlight:'#8b2820'},smooth:{type:'continuous'}}});
 }
 async function ask(){
   const q=document.getElementById('q').value.trim();if(!q)return;
-  const out=document.getElementById('ans');out.innerHTML='<span style="color:var(--low)">思考中…</span>';
+  const out=document.getElementById('ans');out.innerHTML='<span class=dim>思考中…</span>';
   let r;
   try{ r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})}).then(async x=>x.ok?x.json():Promise.reject(await x.text())); }
   catch(e){ out.innerHTML='<span class=err>错误: '+String(e).slice(0,300)+'</span>'; return; }
   const v=r.verify||{};
-  out.innerHTML='<div class=tagrow>意图 '+r.intent+' · LLM '+(r.used_llm?'用':'未用')+' · 回查 '+(v.passed?'通过':'未通过')+(r.elapsed_ms!=null?' · '+Math.round(r.elapsed_ms)+'ms':'')+(r.cache_hit?' · 缓存':'')+'</div>'+r.answer;
+  out.innerHTML='<div class=tg>意图 '+r.intent+' · LLM '+(r.used_llm?'用':'未用')+' · 回查 '+(v.passed?'通过':'未通过')+(r.elapsed_ms!=null?' · '+Math.round(r.elapsed_ms)+'ms':'')+(r.cache_hit?' · 缓存':'')+'</div>'+r.answer;
 }
 </script>
 </body>
