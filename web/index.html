@@ -224,14 +224,14 @@ function renderReport(code,r){
   document.getElementById('report').innerHTML=h;
 }
 function drawNet(code,r){
-  const F={color:'#fff',face:'Noto Sans SC',size:12,bold:true};
+  const F={color:'#fff',face:'Noto Sans SC',size:13,bold:true};
   const nodes=[],edges=[];let i=0;
-  nodes.push({id:code,label:code,color:'#e08a2b',shape:'box',font:{...F,size:14}});
+  nodes.push({id:code,label:code,color:'#e08a2b',font:{...F,size:15}});
   (r.controllers||[]).forEach(c=>{const id='c'+i++;nodes.push({id,label:c.display_name,color:'#0f766e',font:F});edges.push({from:id,to:code,label:'控制 '+(c.control_ratio||'')+'%',arrows:'to',color:'#0f766e',font:{size:10,color:'#0f766e'}})});
   (r.holders||[]).slice(0,8).forEach(x=>{if((r.controllers||[]).some(c=>c.display_name===x.display_name))return;const id='h'+i++;nodes.push({id,label:x.display_name,color:'#6b7280',font:{...F,size:11}});edges.push({from:id,to:code,label:x.ratio!=null?'持股 '+x.ratio+'%':'持股',arrows:'to',color:'#9ca3af',font:{size:10,color:'#6b7280'}})});
   (r.related.system_only||[]).slice(0,12).forEach(s=>{const id='p'+i++;const col=s.confidence==='high'?'#15803d':(s.confidence==='medium'?'#b45309':'#6b7280');nodes.push({id,label:s.name,color:col,font:{...F,size:11}});edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence==='low',color:'#9ca3af',font:{size:10,color:'#6b7280'}})});
   (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:'#1e40af',font:{...F,size:11}});edges.push({from:code,to:id,label:'验证',arrows:'to',color:'#1e40af',font:{size:10,color:'#1e40af'}})});
-  new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{layout:{improvedLayout:true},physics:{stabilization:true,barnesHut:{springLength:140,springStrength:.04}},nodes:{shape:'dot',size:16,borderWidth:2},edges:{smooth:{type:'continuous'},width:1.5}});
+  new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{layout:{improvedLayout:true},physics:{stabilization:true,barnesHut:{springLength:160,springStrength:.04}},nodes:{shape:'box',margin:8,widthConstraint:{maximum:140},borderWidth:2},edges:{smooth:{type:'continuous'},width:1.5}});
 }
 async function ask(){
   const q=document.getElementById('q').value.trim();if(!q)return;
