@@ -81,6 +81,9 @@ td.r,th.r{text-align:right;font-family:'JetBrains Mono',monospace}
 .rp-item .tag.low{background:#f3f4f6;color:var(--low)}
 .rp-item .rl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink3);margin-left:6px}
 .rp-item .pth{font-size:11px;color:var(--ink3);margin-top:3px;font-family:'JetBrains Mono',monospace;line-height:1.4}
+.rp-item .ev-detail{font-size:11px;color:var(--ink3);margin-top:3px;display:none;font-family:'JetBrains Mono',monospace}
+.rp-item .ev-detail.show{display:block}
+.rp-item:hover{cursor:pointer;background:var(--line2)}
 .rp-inline{margin-top:6px;font-size:12px;color:var(--ink2);line-height:1.7}
 
 /* events timeline */
@@ -222,7 +225,7 @@ function renderReport(code,r){
   h+='<div class=rp-list">';
   (rr.system_only||[]).slice(0,18).forEach(s=>{
     const cf=s.confidence;
-    h+=`<div class=rp-item><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${s.rule}</span>${s.path?`<div class=pth>${s.path.slice(0,120)}${s.path.length>120?'…':''}</div>`:''}</div>`;
+    h+=`<div class=rp-item onclick="this.querySelector('.ev-detail').classList.toggle('show')"><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${s.rule}</span>${s.path?`<div class=pth>${s.path.slice(0,120)}${s.path.length>120?'…':''}</div>`:''}<div class="ev-detail">证据: ${(s.evidence||[]).map(e=>(e.source||e.table||'?')).join(' / ')||'无'}</div></div>`;
   });
   h+='</div>';
   h+=`<div class=rp-inline"><span class=dim>已披露验证:</span> ${(rr.matched||[]).map(x=>x.name).join(', ')||'<span class=dim>无</span>'}</div>`;
