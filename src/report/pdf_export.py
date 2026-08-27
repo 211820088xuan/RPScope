@@ -80,4 +80,4 @@ def render_pdf(dossier: dict, output_path) -> Path:
     elems.append(Paragraph(f"数据来源: {disc.get('data_sources','')}  覆盖: {disc.get('coverage','')}", small))
 
     doc.build(elems)
-    return p
+    return output_path if is_buf else p
