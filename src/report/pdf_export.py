@@ -54,7 +54,8 @@ def render_pdf(dossier: dict, output_path) -> Path:
     elems.append(Table(holder_data, colWidths=[15*mm, 70*mm, 25*mm, 30*mm]))
     elems.append(Spacer(1, 5))
     cs = dossier.get("controllers", [])
-    elems.append(Paragraph(f"实控人: {', '.join(f'{c[\"display_name\"]}({c[\"control_ratio\"]}%)' for c in cs) if cs else '未披露'}", body))
+    ctrl_str = ", ".join(f"{c.get('display_name','')}({c.get('control_ratio','')}%)".replace("None","未披露") for c in cs) if cs else "未披露"
+    elems.append(Paragraph(f"实控人: {ctrl_str}", body))
     elems.append(Spacer(1, 8))
 
     # 关联方清单
