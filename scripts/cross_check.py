@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.llm.client import LLMClient
 
-JUDGE2 = "deepseek-v4-flash-0731"
+JUDGE2 = "qwen3.7-plus"
 llm = LLMClient(model=JUDGE2)
 print(f"第二裁判: {JUDGE2} enabled={llm.enabled}")
 
@@ -16,7 +16,7 @@ print(f"第二裁判: {JUDGE2} enabled={llm.enabled}")
 def t1_cross():
     csv_path = Path("data/reviews/system_only_review.csv")
     rows = list(csv.DictReader(open(csv_path, encoding="utf-8-sig")))
-    out = Path("data/reviews/system_only_review_deepseek.csv")
+    out = Path("data/reviews/system_only_review_qwenplus.csv")
     done = {}
     if out.exists():
         for r in csv.DictReader(open(out, encoding="utf-8-sig")):
@@ -47,7 +47,7 @@ def t1_cross():
 def t3_cross():
     ann = Path("data/annotations/person_disambig.jsonl")
     pairs = [json.loads(l) for l in ann.read_text(encoding="utf-8").splitlines() if l.strip()]
-    out = Path("data/annotations/person_disambig_deepseek.jsonl")
+    out = Path("data/annotations/person_disambig_qwenplus.jsonl")
     done = set()
     if out.exists():
         for l in out.read_text(encoding="utf-8").splitlines():
@@ -73,7 +73,7 @@ def compare():
     print("\n=== 交叉对比 ===")
     # T1
     qf = list(csv.DictReader(open("data/reviews/system_only_review_filled.csv",encoding="utf-8-sig")))
-    df = {r["party_name"]:r["human_class"] for r in csv.DictReader(open("data/reviews/system_only_review_deepseek.csv",encoding="utf-8-sig"))}
+    df = {r["party_name"]:r["human_class"] for r in csv.DictReader(open("data/reviews/system_only_review_qwenplus.csv",encoding="utf-8-sig"))}
     agree=disagree=0; dis_items=[]
     for r in qf:
         q=r["human_class"]; d=df.get(r["party_name"],"")
@@ -85,8 +85,8 @@ def compare():
     # T3
     qp={json.loads(l)["name"]:json.loads(l).get("same_person") for l in open("data/annotations/person_disambig_filled.jsonl",encoding="utf-8") if l.strip()}
     dp={}
-    if Path("data/annotations/person_disambig_deepseek.jsonl").exists():
-        dp={json.loads(l)["name"]:json.loads(l).get("same_person") for l in open("data/annotations/person_disambig_deepseek.jsonl",encoding="utf-8") if l.strip()}
+    if Path("data/annotations/person_disambig_qwenplus.jsonl").exists():
+        dp={json.loads(l)["name"]:json.loads(l).get("same_person") for l in open("data/annotations/person_disambig_qwenplus.jsonl",encoding="utf-8") if l.strip()}
     a=d=0; dis3=[]
     for name in qp:
         if name in dp:
