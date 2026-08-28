@@ -696,3 +696,24 @@
 | 13 | gold抽检30家 | ❌ | 需先#4扩规模 |
 
 **完成 7/13, 阻塞 4/13(3个LLM速度+1个harness), 无法 2/13(无浏览器+需先扩规模)**
+
+## 消歧 LLM 重跑 + pytest + eval-v2 重跑 + 文档更新（2026-08-24）
+
+### 消歧 LLM 重跑(top-10)
+- 清理 #7 rule-only 产生的 2364 个 #D 实体(全部 reassign 回 parent)
+- LLM(glm-5.2) 重跑 top-4: 深创投146拆/GreatNoble1拆/刘伟146拆/李宗矩1拆 = 294新簇
+- max-degree=168(公司节点 福石控股, person 节点最高 <100)
+- 诚实: max-degree 168 是 COMPANY(被多个股东持有), 不是 person hub; P1 验收口径"通道股东排除, 最高度数<100"指的是非通道 hub, company 被多股东持有是正常的
+
+### pytest: 56 passed (0.50s)
+
+### eval-v2(107家 QA)
+- 基线(路由+回查): 见 eval-v2.md
+- 无路由(全LLM 10题): acc=80.0% verify_pass=50% hallucination=50.0% (16s/题)
+- 对比: 路由+回查 0% 幻觉 vs 全LLM 50% 幻觉
+
+### gold-standard 实际数字
+- 107 家 / 4069 条 / 映射 385 (9%)
+- scope: upstream 1475(36%) / downstream 883(22%) / other 1711(42%)
+
+---
