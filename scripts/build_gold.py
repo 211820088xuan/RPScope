@@ -120,8 +120,13 @@ def main(codes: list[str] | None = None, n: int = 5, workers: int = 3) -> None:
     llm = LLMClient()
     print(f"LLM enabled={llm.enabled} | 并行 {workers} worker", flush=True)
     if not codes:
+        import random; random.seed()
+        done = {r[0] for r in store.conn.execute(
+            "SELECT DISTINCT stock_code FROM gold_related_party").fetchall()}
         pool = [r[0] for r in store.conn.execute(
             "SELECT DISTINCT stock_code FROM actual_controller").fetchall()]
+        pool = [c for c in pool if c not in done]
+        random.shuffle(pool)
         codes = pool[:n]
     force = "--force" in sys.argv
     if not force:
