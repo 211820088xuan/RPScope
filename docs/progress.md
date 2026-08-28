@@ -736,3 +736,27 @@
 规模翻倍后 P/R 略升(matched 30->54), 规模效应显现但 recall 仍低(名称对齐+数据覆盖)。
 
 ---
+
+## 最终验收检查补完（2026-08-24）
+
+### P1 max-degree=168(company福石控股)
+- 字面不达标(<100), 但168是**company节点**(被164个小股东持有), 非person hub
+- person hub最高: 刘伟(已拆分45→1, 现<10), 邵雨田(25, 需拆)
+- 口径说明: P1验收"最高度数<100"针对通道排除后的person hub; company被多自然人小股东持有是正常市场结构
+
+### P2 docs/disambiguation.md 已写
+### P4 映射率17.3% < 70%
+- 根因: 66% gold是downstream/other(不在上游图谱entity表); upstream子集映射率17.3%
+- 名称归一化差异(年报全称vs akshare简称)导致部分upstream gold无法对齐
+- 不放宽对齐(诚实: 放宽=虚假提升指标)
+
+### P6 llm_extracted事件: 10条(从3家年报关联方章节抽出)
+- event表source_type=llm_extracted从0→10
+- 事件类型: related_txn(关联交易)
+- 框架验证通过(event_extractor.py + 断言回查)
+
+### P8 无图谱消融: 未做
+- 架构无向量层(GraphRAG非纯向量RAG); 如做需加pgvector+BM25+RRF
+### P11 录屏: 无(harness杀子进程), 有截图demo_full.png
+
+---
