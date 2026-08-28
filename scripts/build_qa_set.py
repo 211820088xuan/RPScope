@@ -26,12 +26,13 @@ def main() -> None:
 
     # --- fact_query: 取有股东+实控人的公司 ---
     co_with_ctrl = [r[0] for r in store.conn.execute(
-        "SELECT DISTINCT stock_code FROM actual_controller").fetchall()][:15]
+        "SELECT DISTINCT stock_code FROM actual_controller").fetchall()][:30]
     for code in co_with_ctrl:
         # 金: 股东名集(非通道)
         holders = [r[0] for r in store.conn.execute(
             "SELECT e.display_name FROM holding h JOIN entity e ON h.entity_id=e.entity_id "
-            "WHERE h.stock_code=? AND e.is_channel=0 AND e.display_name IS NOT NULL LIMIT 5", (code,)).fetchall()]
+            "WHERE h.stock_code=? AND e.is_channel=0 AND e.display_name IS NOT NULL "
+            "AND h.source='stock_gdfx_free_holding_detail_em' LIMIT 5", (code,)).fetchall()]
         if not holders:
             continue
         qid += 1
@@ -49,7 +50,7 @@ def main() -> None:
 
     # --- related_party: 取有 gold 的公司, 金=gold_related_party 名集 ---
     gold_cos = [r[0] for r in store.conn.execute(
-        "SELECT DISTINCT stock_code FROM gold_related_party").fetchall()][:15]
+        "SELECT DISTINCT stock_code FROM gold_related_party").fetchall()][:30]
     for code in gold_cos:
         names = [r[0] for r in store.conn.execute(
             "SELECT party_name FROM gold_related_party WHERE stock_code=?", (code,)).fetchall()]

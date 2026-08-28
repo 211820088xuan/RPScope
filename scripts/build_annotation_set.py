@@ -19,6 +19,8 @@ OUT = Path("data/annotations/person_disambig.jsonl")
 
 
 def main(n_per_tier: int = 85) -> None:
+    # 生成标注集: 扩到 200+ 对(分层 high/mid/low 各 ~70)
+    # 原 85/层=255 但去重后 90; 改为取更多候选公司
     store = Store("rpscope.db")
     client = LLMClient()
     # 找记录数>=4 的 person 实体(才能抽同实体内不同记录的对)
@@ -28,7 +30,7 @@ def main(n_per_tier: int = 85) -> None:
         "    (SELECT COUNT(*) FROM position p WHERE p.entity_id=e.entity_id) + "
         "    (SELECT COUNT(*) FROM holding h WHERE h.entity_id=e.entity_id) AS n "
         "  FROM entity e WHERE e.entity_type='person' AND e.is_channel=0 AND e.canonical_name NOT LIKE '%#D%'"
-        ") WHERE n BETWEEN 4 AND 30 ORDER BY n DESC LIMIT 200"))
+        ") WHERE n BETWEEN 2 AND 30 ORDER BY n DESC LIMIT 500"))
 
     pairs: list[dict] = []
     for r in cands:
@@ -65,6 +67,10 @@ def main(n_per_tier: int = 85) -> None:
     out = []
     for t in ("high", "mid", "low"):
         out.extend(by_tier[t][:n_per_tier])
+    # 不够则全取 mid
+    if len(out) < 200:
+        remaining = [p for p in by_tier["mid"] if p not in out]
+        out.extend(remaining[:200 - len(out)])
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         for p in out:
