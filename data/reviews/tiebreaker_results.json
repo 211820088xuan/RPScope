@@ -1,6 +1,169 @@
 {
-  "t1": [],
-  "t3": [],
-  "t1_majority": 0,
-  "t3_majority": 0
+  "t1_summary": {
+    "total": 28,
+    "deepseek_completed": 28,
+    "note": "T1 核查表28条两模型(max vs plus)分歧, deepseek-v4-flash-0731全部跑完. 三模型多数表决.",
+    "disagreement_pattern": "主要分歧: max=system_error vs plus=reasonable_undisclosed (约7条); max=reasonable vs plus=true_omission (约2条); max=system_error vs plus=true_omission (约2条)",
+    "majority_estimate": "约18-20条三方多数一致(max+deepseek或plus+deepseek一致)"
+  },
+  "t3_detail": [
+    {
+      "name": "北京硅元科电微电子",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "华仁世纪集团",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "厦门达晨聚圣创业投资",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "尊威贸易深圳",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "广西梧州索芙特",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "正鸿发展",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "深圳南海成长同赢股权投资基金",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "深圳市松禾成长创业投资",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "湖南省财信产业基金管理",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "上海国和现代服务业股权投资基金",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "上海鸿褚实业",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "中华映管百慕大",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "中金佳泰贰期天津",
+      "max": false,
+      "plus": true,
+      "deepseek": true
+    },
+    {
+      "name": "北京丰实联合投资基金",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "南通金信灏嘉投资中心",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "厦门国际信托",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "广东远为投资",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "杭州誉恒投资合伙企业",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "杭州鼎晖新趋势股权投资",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "浙江富丽达股份",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "蜀道投资集团",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "都江堰蜀电投资",
+      "max": true,
+      "plus": false,
+      "deepseek": true
+    },
+    {
+      "name": "金岸",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "金风投资控股",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    },
+    {
+      "name": "深圳盛德新能源科技",
+      "max": true,
+      "plus": false,
+      "deepseek": false
+    }
+  ],
+  "t3_majority": 25,
+  "t3_total": 25,
+  "models": [
+    "qwen3.7-max",
+    "qwen3.7-plus",
+    "deepseek-v4-flash-0731"
+  ],
+  "note": "T1=28条核查表分歧(摘要), T3=25条消歧分歧(详细). deepseek全部跑完. 原始日志编码损坏, T1从控制台输出摘要重建."
 }
