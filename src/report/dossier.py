@@ -17,14 +17,22 @@ def build_dossier(store: Store, engine: RuleEngine, stock_code: str, as_of: str 
     co = store.conn.execute("SELECT * FROM company WHERE stock_code=?", (code,)).fetchone()
     # 一、基本信息
     basic = dict(co) if co else {}
-    # 二、股权结构
+    # 二、股权结构(以 free_holding 为主名单, ggcg 补 ratio)
     holders = [dict(r) for r in store.conn.execute(
-        "SELECT MAX(h.ratio) AS ratio, e.display_name, e.entity_type, e.is_channel, e.confidence "
+        "SELECT MAX(h.ratio) AS ratio, e.display_name, e.entity_type, e.is_channel, e.confidence, MIN(h.id) AS ord "
         "FROM holding h JOIN entity e ON h.entity_id=e.entity_id "
-        "WHERE h.stock_code=? AND h.source='stock_gdfx_free_holding_detail_em' "
+        "WHERE h.stock_code=? AND h.source IN ('stock_gdfx_free_holding_detail_em','stock_ggcg_em') "
         "GROUP BY e.entity_id, e.display_name, e.entity_type, e.is_channel, e.confidence "
         "ORDER BY MIN(h.id) LIMIT 10",
         (code,)).fetchall()]
+    # 补: 从 ggcg 取 ratio 填入 free_holding 的 None
+    ggcg = {r['display_name']: r['ratio'] for r in store.conn.execute(
+        "SELECT e.display_name, MAX(h.ratio) AS ratio FROM holding h JOIN entity e ON h.entity_id=e.entity_id "
+        "WHERE h.stock_code=? AND h.source='stock_ggcg_em' AND h.ratio IS NOT NULL "
+        "GROUP BY e.display_name", (code,)).fetchall()}
+    for h in holders:
+        if h['ratio'] is None and h['display_name'] in ggcg:
+            h['ratio'] = ggcg[h['display_name']]
     controllers = [dict(r) for r in store.conn.execute(
         "SELECT ac.control_ratio, e.display_name, e.entity_type FROM actual_controller ac "
         "JOIN entity e ON ac.entity_id=e.entity_id WHERE ac.stock_code=? AND e.is_channel=0", (code,)).fetchall()]

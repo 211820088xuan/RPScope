@@ -222,7 +222,7 @@ function renderReport(code,r){
      `<tr><td class=dim>行业</td><td>${co.industry||'未知'}</td><td class=dim>上市</td><td class=mono>${dv(co.list_date)}</td></tr></table></div>`;
   const hasRatio=(r.holders||[]).some(x=>x.ratio!=null);
   h+='<div class=sec><div class=sec-h>股权结构 前十大股东</div><table><thead><tr><th class=r style=width:30px>#</th><th>股东</th>'+(hasRatio?'<th class=r>比例</th>':'')+'<th>类型</th></tr></thead><tbody>';
-  (r.holders||[]).filter(x=>!x.is_channel).forEach((x,i)=>{h+=`<tr><td class=r>${i+1}</td><td>${x.display_name}</td>${hasRatio?`<td class=r>${x.ratio!=null?x.ratio+'%':'<span class=dim>未披露</span>'}</td>`:''}<td class="dim mono">${dv(x.entity_type)}</td></tr>`});
+  (r.holders||[]).forEach((x,i)=>{h+=`<tr style="${x.is_channel?'opacity:.6':''}"><td class=r>${i+1}</td><td>${x.display_name}${x.is_channel?' <span class="tag low" style="font-size:10px">通道</span>':''}</td>${hasRatio?`<td class=r>${x.ratio!=null?x.ratio+'%':'<span class=dim>—</span>'}</td>`:''}<td class="dim mono">${dv(x.entity_type)}</td></tr>`});
   if(!(r.holders||[]).length)h+='<tr><td colspan=4 class=empty>无</td></tr>';
   h+='</tbody></table>';
   const cs=r.controllers||[];
