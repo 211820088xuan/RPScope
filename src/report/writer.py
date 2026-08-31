@@ -22,8 +22,9 @@ def write_prose(dossier: dict, llm: LLMClient | None = None, use_llm: bool = Fal
         ])
         # 断言回查: 答案里的公司名(含后缀)须在 template 出现
         import re
+        _GENERIC = {"联营企业","关联企业","子公司","分公司","母公司","合资企业","合伙企业","相关企业","其他企业","所属企业"}
         names = re.findall(r"[\u4e00-\u9fa5A-Za-z()（）]{2,30}(?:有限公司|股份有限公司|集团|企业)", ans)
-        violations = [n for n in set(names) if normalize_name(n) not in normalize_name(template)]
+        violations = [n for n in set(names) if n not in _GENERIC and normalize_name(n) not in normalize_name(template)]
         if violations:
             return template + f"\n\n[撰写回查: LLM 引入了未给定实体 {violations}, 退回模板]"
         return ans
