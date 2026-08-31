@@ -246,7 +246,7 @@ function renderReport(code,r){
       if(e.report_period)parts.push('('+e.report_period+')');
       return parts.join(' ');
     }).join('；');
-    h+=`<div class="rp-item" onclick="this.querySelector('.ev-detail').classList.toggle('show')"><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${ruleName(s.rule)}</span>${s.path?`<div class=pth>${s.path.slice(0,120)}${s.path.length>120?'…':''}</div>`:''}<div class="ev-detail">证据: ${evTxt||'无'}</div></div>`;
+    h+=`<div class="rp-item" onclick="this.querySelector('.ev-detail').classList.toggle('show')"><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${ruleName(s.rule)}</span><div class="ev-detail">证据: ${evTxt||'无'}</div></div>`;
   });
   h+='</div>';
   const go=rr.gold_only||[],mt=rr.matched||[];
@@ -256,7 +256,6 @@ function renderReport(code,r){
   (r.events||[]).slice(0,12).forEach(e=>{h+=`<div class=ev-item><span class=dt>${dv(e.event_date)}</span><span class="typ ${e.event_type}">${evType(e.event_type)}</span><span class=sm>${(e.summary||'').slice(0,80)}</span></div>`});
   if(!(r.events||[]).length)h+='<span class=empty>无</span>';
   h+='</div></div>';
-  h+=`<div class=sec><div class=sec-h>口径与限制</div><div class=disc>${r.disclaimer.disclaimer}<br><br><span class=dim>数据来源: ${r.disclaimer.data_sources}<br>覆盖: ${r.disclaimer.coverage}</span></div></div>`;
   document.getElementById('report').innerHTML=h;
 }
 function drawNet(code,r){
