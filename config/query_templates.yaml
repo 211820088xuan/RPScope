@@ -76,7 +76,7 @@ templates:
         required: false
         type: enum[control,hold,serve]
         default: null
-        description: 关系类型: 控制/持股/任职
+        description: "关系类型: 控制/持股/任职"
       min_ratio:
         required: false
         type: float
@@ -104,7 +104,7 @@ templates:
       role_type:
         required: true
         type: enum[holder,controller,director,all]
-        description: 角色: 股东/实控人/董监高/全部
+        description: "角色: 股东/实控人/董监高/全部"
       top_n:
         required: false
         type: int
@@ -132,7 +132,7 @@ templates:
         required: false
         type: list
         default: null
-        description: 事件类型: guarantee/lawsuit/pledge/related_txn
+        description: "事件类型: guarantee/lawsuit/pledge/related_txn"
       date_range:
         required: false
         type: date_range
