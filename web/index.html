@@ -233,7 +233,17 @@ function renderReport(code,r){
   h+='<div class=rp-list">';
   (rr.system_only||[]).slice(0,18).forEach(s=>{
     const cf=s.confidence;
-    h+=`<div class=rp-item onclick="this.querySelector('.ev-detail').classList.toggle('show')"><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${s.rule}</span>${s.path?`<div class=pth>${s.path.slice(0,120)}${s.path.length>120?'…':''}</div>`:''}<div class="ev-detail">证据: ${(s.evidence||[]).map(e=>(e.source||e.table||'?')).join(' / ')||'无'}</div></div>`;
+    const evTxt=(s.evidence||[]).map(e=>{
+      const t=e.table,raw=e.raw||{},parts=[];
+      if(t==='holding'){parts.push(raw.ratio!=null?'持股 '+raw.ratio+'%':'持股');if(raw.rank)parts.push('第'+raw.rank+'大股东')}
+      else if(t==='position'){parts.push('任'+(raw.title||'董监高'));if(raw.brother)parts.push('在 '+raw.brother)}
+      else if(t==='actual_controller'){parts.push(raw.brother?'共同实控人(' + raw.brother + ')':'实际控制人')}
+      else if(t==='guarantee_pair'){parts.push('担保'+(raw.amount?' '+raw.amount:''))}
+      else parts.push(t||'?');
+      if(e.report_period)parts.push('('+e.report_period+')');
+      return parts.join(' ');
+    }).join('；');
+    h+=`<div class="rp-item" onclick="this.querySelector('.ev-detail').classList.toggle('show')"><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${s.rule}</span>${s.path?`<div class=pth>${s.path.slice(0,120)}${s.path.length>120?'…':''}</div>`:''}<div class="ev-detail">证据: ${evTxt||'无'}</div></div>`;
   });
   h+='</div>';
   const go=rr.gold_only||[],mt=rr.matched||[];
