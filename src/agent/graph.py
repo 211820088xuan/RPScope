@@ -107,8 +107,12 @@ def open_node(state: AgentState) -> dict:
     code = state["code"]
     parts = []
     if code:
+        parts.append(_fmt_fact(tool_fact(_DEPS["store"], code)))
         parts.append(_fmt_related(tool_related_party(_DEPS["store"], _DEPS["engine"], code)))
-        parts.append(f"事件: {tool_events(_DEPS['store'], code).get('n',0)} 条")
+        ev = tool_events(_DEPS["store"], code)
+        parts.append(f"风险事件: {ev.get('n',0)} 条")
+        for e in (ev.get("events") or [])[:5]:
+            parts.append(f"  {e.get('event_date','')} {e.get('event_type','')} {(e.get('summary','') or '')[:40]}")
     ctx = "\n".join(parts) or "无可用结构化数据"
     answer = ctx
     used = False
@@ -116,7 +120,7 @@ def open_node(state: AgentState) -> dict:
         used = True
         try:
             answer = llm.chat([
-                {"role": "system", "content": "你是关联方分析助手。以下是系统从公开数据中提取的结构化数据，你可以结合这些数据和你的知识回答用户问题。涉及具体公司名/持股比例/事件时，以结构化数据为准。"},
+                {"role": "system", "content": f"你是关联方与风险分析助手。用户正在查看股票 {code}，以下是系统从公开数据中提取的结构化数据。你可以结合这些数据和你的知识回答用户问题。涉及具体公司名/持股比例/事件时，以结构化数据为准。"},
                 {"role": "user", "content": f"问题: {state['question']}\n\n结构化数据:\n{ctx}\n\n请用中文回答。"},
             ])
         except Exception as e:
