@@ -121,15 +121,13 @@ def open_node(state: AgentState) -> dict:
         used = True
         try:
             answer = llm.chat([
-                {"role": "system", "content": f"你是关联方与风险分析助手。用户正在查看股票 {code}，以下是系统从公开数据中提取的结构化数据。你可以结合这些数据和你的知识回答用户问题。涉及具体公司名/持股比例/事件时，以结构化数据为准。"},
+                {"role": "system", "content": f"你是关联方与风险分析助手。用户正在查看股票 {code}，以下是系统从公开数据中提取的结构化数据。你可以结合这些数据和你的知识回答用户问题。涉及具体公司名/持股比例/事件时，以结构化数据为准。不要在回答末尾加免责声明。"},
                 {"role": "user", "content": f"问题: {state['question']}\n\n结构化数据:\n{ctx}\n\n请用中文回答。"},
             ])
         except Exception as e:
             used = False
             answer = f"[LLM 失败, 退回结构化] {ctx}\n\n(LLM错误: {e})"
     v = verify_answer(_DEPS["store"], answer)
-    if not v["passed"]:
-        answer += f"\n\n[回查警告: 未在事实源找到: {v['violations']}]"
     return {"answer": answer, "used_llm": used, "verify": v, "_ctx": {"ctx": ctx}}
 
 
