@@ -1,9 +1,10 @@
-# scope_class other 诊断（607 条, 37.1%）
+# scope_class other 诊断（3623 条, 47.4%）
 
-> 总计 607 条, relation_desc 去重后 27 种取值
-> 空白 relation_desc: 545 条
+> 总计 3623 条（203 家金标准中 scope_class=other 的条目），relation_desc 去重后约 40+ 种取值
+> 空白 relation_desc: 约 3300 条（占 other 的 ~91%）
+> 注: 以下 Top 50 表来自 28 家时的旧数据（607 条），203 家规模下分布类似但数量更大，待重跑
 
-## Top 50 relation_desc 取值分布
+## Top 50 relation_desc 取值分布（28 家时期数据）
 
 | 频次 | relation_desc | 诊断(为何没被分类) |
 |---|---|---|
