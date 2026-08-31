@@ -67,10 +67,11 @@ def ask(body: dict):
     q = body.get("question", "")
     if not q:
         raise HTTPException(400, "question required")
-    cached = _cache.get(q)
-    if cached is not None:
-        cached["cache_hit"] = True
-        return dict(cached)
+    if not body.get("nocache"):
+        cached = _cache.get(q)
+        if cached is not None:
+            cached["cache_hit"] = True
+            return dict(cached)
     s = _store()
     try:
         r = agent_run(s, _eng, _llm, q)
