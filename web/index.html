@@ -228,8 +228,9 @@ function renderReport(code,r){
     h+=`<div class=rp-item onclick="this.querySelector('.ev-detail').classList.toggle('show')"><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${s.rule}</span>${s.path?`<div class=pth>${s.path.slice(0,120)}${s.path.length>120?'…':''}</div>`:''}<div class="ev-detail">证据: ${(s.evidence||[]).map(e=>(e.source||e.table||'?')).join(' / ')||'无'}</div></div>`;
   });
   h+='</div>';
-  h+=`<div class=rp-inline"><span class=dim>已披露验证:</span> ${(rr.matched||[]).map(x=>x.name).join(', ')||'<span class=dim>无</span>'}</div>`;
-  h+=`<div class=rp-inline"><span class=dim>年报未验证:</span> ${(rr.gold_only||[]).map(x=>x.name).join(', ')||'<span class=dim>无</span>'}</div></div>`;
+  const go=rr.gold_only||[],mt=rr.matched||[];
+  h+=`<div class=rp-inline><span class=dim>已披露验证 (${mt.length}):</span> ${mt.slice(0,5).map(x=>x.name).join('、')||'<span class=dim>无</span>'}${mt.length>5?' … 还有 '+(mt.length-5)+' 家':''}</div>`;
+  h+=`<div class=rp-inline><span class=dim>年报未验证 (${go.length}):</span> ${go.slice(0,5).map(x=>x.name).join('、')||'<span class=dim>无</span>'}${go.length>5?' … 还有 '+(go.length-5)+' 家（多为子公司/合营/联营，系统不覆盖）':''}</div></div>`;
   h+='<div class=sec><div class=sec-h>风险事件时间线</div><div class=ev-list">';
   (r.events||[]).slice(0,12).forEach(e=>{h+=`<div class=ev-item><span class=dt>${dv(e.event_date)}</span><span class=typ>${e.event_type}</span><span class=sm>${(e.summary||'').slice(0,50)}</span></div>`});
   if(!(r.events||[]).length)h+='<span class=empty>无</span>';
