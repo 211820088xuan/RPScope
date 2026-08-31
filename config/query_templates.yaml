@@ -1,0 +1,178 @@
+# RPScope 查询模板 - T1
+# 7 类意图, 每类对应参数化查询模板
+# 槽位: name(必填/可选), type, default, description
+
+templates:
+  Q1:
+    intent: related_party
+    description: 查某公司的关联方
+    executor: q1_related_party
+    slots:
+      company:
+        required: true
+        type: stock_code
+        description: 被查询的股票代码
+      rule_ids:
+        required: false
+        type: list
+        default: null
+        description: 限定规则ID, 如 ["R1","R2"]
+      min_confidence:
+        required: false
+        type: enum[high,medium,low]
+        default: null
+        description: 最低置信度过滤
+      as_of:
+        required: false
+        type: date
+        default: null
+        description: 时点
+    examples:
+      - "002594的关联方有哪些"
+      - "比亚迪的关联方"
+      - "300750关联方 只看高置信度的"
+      - "茅台R2规则的关联方"
+      - "600036的关联方 截至2024年底"
+
+  Q2:
+    intent: relation_path
+    description: 查两个实体间的关系路径
+    executor: q2_relation_path
+    slots:
+      entity_a:
+        required: true
+        type: entity_ref
+        description: 实体A(公司或人/机构)
+      entity_b:
+        required: true
+        type: entity_ref
+        description: 实体B(公司或人/机构)
+      max_hops:
+        required: false
+        type: int
+        default: 3
+        description: 最大路径跳数
+      as_of:
+        required: false
+        type: date
+        default: null
+    examples:
+      - "002594和300750什么关系"
+      - "比亚迪和宁德时代有关联吗"
+      - "王传福和融捷投资什么关系"
+      - "600519和000858的关系路径"
+      - "李振国控制的公司跟隆基绿能什么关系"
+
+  Q3:
+    intent: reverse_control
+    description: 反向查询某人/机构控制或持股哪些公司
+    executor: q3_reverse_control
+    slots:
+      entity:
+        required: true
+        type: entity_ref
+        description: 人名或机构名
+      relation_type:
+        required: false
+        type: enum[control,hold,serve]
+        default: null
+        description: 关系类型: 控制/持股/任职
+      min_ratio:
+        required: false
+        type: float
+        default: null
+        description: 最低持股比例
+      as_of:
+        required: false
+        type: date
+        default: null
+    examples:
+      - "王传福控制哪些公司"
+      - "融捷投资持有哪些上市公司"
+      - "曾毓群控制的公司有哪些"
+      - "中国平安持股超过5%的公司"
+      - "李振国在哪些公司任职"
+
+  Q4:
+    intent: company_role
+    description: 查某公司的股东/董监高/实控人
+    executor: q4_company_role
+    slots:
+      company:
+        required: true
+        type: stock_code
+      role_type:
+        required: true
+        type: enum[holder,controller,director,all]
+        description: 角色: 股东/实控人/董监高/全部
+      top_n:
+        required: false
+        type: int
+        default: 10
+      as_of:
+        required: false
+        type: date
+        default: null
+    examples:
+      - "002594的前十大股东"
+      - "比亚迪的实际控制人是谁"
+      - "300750的董监高"
+      - "茅台的股东"
+      - "600036的实控人"
+
+  Q5:
+    intent: risk_events
+    description: 查某公司的风险事件
+    executor: q5_risk_events
+    slots:
+      company:
+        required: true
+        type: stock_code
+      event_types:
+        required: false
+        type: list
+        default: null
+        description: 事件类型: guarantee/lawsuit/pledge/related_txn
+      date_range:
+        required: false
+        type: date_range
+        default: null
+        description: 日期范围 [start, end]
+    examples:
+      - "002594的担保情况"
+      - "比亚迪的风险事件"
+      - "300750的诉讼"
+      - "茅台有没有质押"
+      - "600036近三年的担保"
+
+  Q6:
+    intent: overlap
+    description: 两家公司的关联方重合
+    executor: q6_overlap
+    slots:
+      company_a:
+        required: true
+        type: stock_code
+      company_b:
+        required: true
+        type: stock_code
+      as_of:
+        required: false
+        type: date
+        default: null
+    examples:
+      - "002594和300750的关联方重合"
+      - "比亚迪和宁德时代有哪些共同关联方"
+      - "茅台和五粮液的关联方交集"
+      - "600036和000001的关联方重叠"
+      - "中国平安和招商银行关联方重合度"
+
+  Q7:
+    intent: open
+    description: 模板外查询(兜底)
+    executor: q7_generated
+    slots: {}
+    examples:
+      - "哪些公司的实控人同时控制5家以上上市公司"
+      - "比亚迪的关联方里有没有新能源行业的"
+      - "持股比例最高的前10个股东"

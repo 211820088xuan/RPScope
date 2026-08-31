@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.agent.graph import run as agent_run
 from src.llm.client import LLMClient
+from src.query.pipeline import run as nlq_run
 from src.report.dossier import build_dossier
 from src.report.pdf_export import render_pdf
 from src.report.writer import write_prose
@@ -74,11 +75,12 @@ def ask(body: dict):
             return dict(cached)
     s = _store()
     try:
-        r = agent_run(s, _eng, _llm, q, body.get("context_code",""))
+        r = nlq_run(s, _eng, _llm, q, body.get("context_code",""))
     finally:
         s.close()
     out = {"intent": r["intent"], "answer": r["answer"], "used_llm": r["used_llm"],
-           "verify": r["verify"], "elapsed_ms": r["elapsed_ms"], "cache_hit": False}
+           "verify": r["verify"], "elapsed_ms": r["elapsed_ms"], "cache_hit": False,
+           "clarifications": r.get("clarifications", [])}
     _cache.set(q, out)
     return out
 
