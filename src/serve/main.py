@@ -19,6 +19,7 @@ from src.agent.graph import run as agent_run
 from src.llm.client import LLMClient
 from src.report.dossier import build_dossier
 from src.report.pdf_export import render_pdf
+from src.report.writer import write_prose
 from src.rules.engine import RuleEngine
 from src.serve.cache import QueryCache
 from src.serve.observability import clear as trace_clear, snapshot as trace_snapshot
@@ -97,6 +98,19 @@ def report_pdf(code: str):
         render_pdf(d, buf)
         return Response(content=buf.getvalue(), media_type="application/pdf",
                         headers={"Content-Disposition": f"inline; filename={code}_dossier.pdf"})
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    finally:
+        s.close()
+
+
+@app.get("/api/report/{code}/prose")
+def report_prose(code: str):
+    s = _store()
+    try:
+        d = build_dossier(s, _eng, code)
+        prose = write_prose(d, _llm, use_llm=True)
+        return {"prose": prose, "used_llm": _llm.enabled}
     except Exception as e:
         raise HTTPException(500, str(e))
     finally:

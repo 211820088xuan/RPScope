@@ -104,6 +104,11 @@ td.r,th.r{text-align:right;font-family:'JetBrains Mono',monospace}
 /* disclaimer */
 .disc{font-size:13px;color:var(--ink2);line-height:1.7;padding:8px 10px;background:var(--line2);border-radius:6px}
 
+/* prose report */
+.prose-btn{padding:8px 18px;font-size:13.5px;font-weight:500;cursor:pointer;background:var(--accent);color:#fff;border:none;border-radius:6px}
+.prose-btn:hover{background:#0c5d56}
+.prose-out{font-size:14px;line-height:1.8;color:var(--ink);white-space:pre-wrap;background:var(--paper);padding:12px 14px;border-radius:6px;border:1px solid var(--line2)}
+
 /* graph card */
 .graph-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:var(--shadow)}
 .graph-card .gtitle{font-family:'Noto Serif SC',serif;font-weight:600;font-size:15.5px;margin-bottom:8px}
@@ -255,7 +260,15 @@ function renderReport(code,r){
   (r.events||[]).slice(0,12).forEach(e=>{h+=`<div class=ev-item><span class=dt>${dv(e.event_date)}</span><span class="typ ${e.event_type}">${evType(e.event_type)}</span><span class=sm>${(e.summary||'').slice(0,80)}</span></div>`});
   if(!(r.events||[]).length)h+='<span class=empty>无</span>';
   h+='</div></div>';
+  h+=`<div class=sec><div class=sec-h>AI 叙事报告</div><div id=prose-area><button class="prose-btn" onclick="genProse('${code}')">生成叙事报告（调用 LLM）</button></div></div>`;
   document.getElementById('report').innerHTML=h;
+}
+async function genProse(code){
+  const el=document.getElementById('prose-area');
+  el.innerHTML='<span class=dim>生成中…（约 3-5 秒）</span>';
+  try{const r=await fetch('/api/report/'+code+'/prose').then(async x=>x.ok?x.json():Promise.reject(await x.text()));
+    el.innerHTML=`<div class=prose-out>${(r.prose||'').replace(/\n/g,'<br>')}</div>`;
+  }catch(e){el.innerHTML='<span class=err>'+String(e).slice(0,150)+'</span>'}
 }
 function drawNet(code,r){
   const F={color:'#fff',face:'Noto Sans SC',size:13,bold:true};
