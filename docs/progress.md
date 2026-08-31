@@ -760,3 +760,25 @@
 ### P11 录屏: 无(harness杀子进程), 有截图demo_full.png
 
 ---
+
+## T3: 清理模型生成标注（2026-08-24）
+
+以下文件中的标签由 LLM 投票生成(qwen3.7-max/qwen3.7-plus/deepseek)，不构成人工基准。本系统自身使用 LLM 做消歧兜底，用 LLM 评判自身输出会使评测失去外部性。全部删除:
+
+- data/reviews/system_only_review_deepseek.csv
+- data/reviews/system_only_review_qwenplus.csv
+- data/reviews/system_only_review_filled.csv
+- data/reviews/system_only_review_final.csv
+- data/reviews/tiebreaker_results.json
+- data/reviews/other_sample_filled.csv
+- data/annotations/person_disambig_filled.jsonl
+- data/annotations/person_disambig_qwenplus.jsonl
+- data/annotations/disambig_acc_results.jsonl
+
+保留的(非模型标注):
+- data/reviews/system_only_review.csv (原始未标注, human_class 列留空)
+- data/reviews/other_sample.csv (原始未标注)
+- data/reviews/gold_audit_30.csv (AI填audit_ok, 仅判断数据质量是否合理, 非三分类)
+- data/annotations/person_disambig.jsonl (原始未标注, same_person 列留空)
+
+---

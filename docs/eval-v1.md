@@ -69,39 +69,13 @@ other 3623 条(47.4%)来自 relation_desc 为空的表格抽取项, 名称含公
 | -R3 | 54 | 607 | 8.2% | 2.1% |
 | -R4 | 54 | 571 | 8.6% | 2.1% |
 
-## 七、人工三分类(system_only 核查)
-- CSV: data/reviews/system_only_review.csv (50 条待人工填 human_class)
-- 判定标准: true_omission(真漏报,系统价值) / reasonable_undisclosed(合理未披露) / system_error(系统误报)
-- 人工未填时留占位; 填后跑 scripts/summarize_review.py 算修正后 precision
+## 七、人工三分类
+
+待建。模型标注文件已删除(不构成人工基准)。核查表 data/reviews/system_only_review.csv 中 human_class 列留空，待人工填写。
 
 ## 八、本评测局限性
-- scope_class 分类基于 relation_desc 关键词, other 37.1% 是 relation_desc 空白所致(表格抽取未抓关系列)。
+- scope_class 分类基于 relation_desc 关键词, other 47.4% 是 relation_desc 空白所致(表格抽取未抓关系列)。
 - 可比口径 gold=upstream 子集, 仍受名称对齐限制(别名/简称不一致导致假 gold_only)。
 - 203 家非全市场, 非分层抽样。
 - system_only 待人工核查; 不核查则 P 偏严(系统发现未披露全算 FP, 但其中真漏报是 TP)。
 
-## P5 Case 详细分析（3 个典型）
-
-### Case 1: 真漏报 (true_omission)
-- **主体**: 深振业Ａ(000006)
-- **候选关联方**: 深深房B
-- **规则**: R2
-- **路径**: 000006 -CONTROLLED_BY [32.77%]-> 深圳市国有资产监督管理局 | 深圳市国有资产监督管理局 -CONTROLS-> 200029
-- **证据**: actual_controller#7723 src=stock_hold_control_cninfo period=None | actual_controller#7911 src=stock_
-- **该公司年报已披露upstream**: 深圳市人民政府国有资产监督管理委员会
-- **判定**: 该候选按上市规则确实构成关联人(同实控人兄弟/董监高兼任), 且年报关联方章节未列示。这是系统的核心价值——发现了年报未披露的实质关联。
-
-### Case 2: 合理未披露 (reasonable_undisclosed)
-- **主体**: 深振业Ａ(000006)
-- **候选关联方**: 特  力Ａ
-- **规则**: R2
-- **路径**: 000006 -CONTROLLED_BY [32.77%]-> 深圳市国有资产监督管理局 | 深圳市国有资产监督管理局 -CONTROLS-> 000025
-- **判定**: 关系客观存在但不满足披露实质标准(持股比例低/独立董事/超12个月窗口/纯供应链)。系统找到的不是错, 年报不披露也不是错, 口径不同。
-
-### Case 3: 系统误报 (system_error)
-- **主体**: 深振业Ａ(000006)
-- **候选关联方**: 深 赛 格
-- **规则**: R2
-- **路径**: 000006 -CONTROLLED_BY [32.77%]-> 深圳市国有资产监督管理局 | 深圳市国有资产监督管理局 -CONTROLS-> 000058
-- **证据**: actual_controller#7723 src=stock_hold_control_cninfo period=None | actual_controller#7663 src=stock_
-- **判定**: 路径本身不成立——可能是人名重名未消歧(不同人当同一人)、通道类股东未排除干净、时点错配(不同报告期交叉)、或名称对齐失败(gold里有该公司但用不同名称)。这是 precision 的真正杀手。
