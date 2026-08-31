@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RPScope · 关联方穿透底稿</title>
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-<script src="https://unpkg.com/marked/marked.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -108,7 +107,13 @@ td.r,th.r{text-align:right;font-family:'JetBrains Mono',monospace}
 /* prose report */
 .prose-btn{padding:8px 18px;font-size:13.5px;font-weight:500;cursor:pointer;background:var(--accent);color:#fff;border:none;border-radius:6px}
 .prose-btn:hover{background:#0c5d56}
-.prose-out{font-size:14px;line-height:1.8;color:var(--ink);white-space:pre-wrap;background:var(--paper);padding:12px 14px;border-radius:6px;border:1px solid var(--line2)}
+.prose-out{font-size:14px;line-height:1.8;color:var(--ink);background:var(--paper);padding:12px 14px;border-radius:6px;border:1px solid var(--line2)}
+.prose-out h1{font-family:'Noto Serif SC',serif;font-size:18px;font-weight:700;margin:12px 0 6px}
+.prose-out h2{font-family:'Noto Serif SC',serif;font-size:16px;font-weight:600;margin:10px 0 5px}
+.prose-out h3{font-family:'Noto Serif SC',serif;font-size:14px;font-weight:600;margin:8px 0 4px}
+.prose-out ul{margin:4px 0 4px 18px}
+.prose-out li{margin:2px 0}
+.prose-out p{margin:4px 0}
 
 /* graph card */
 .graph-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:var(--shadow)}
@@ -204,6 +209,7 @@ function dv(v,d='—'){return(v===null||v===undefined||v===''||v==='None')?d:v}
 function cn(name){const m={'HKSCC NOMINEES LIMITED':'香港中央结算(代理)','BARCLAYS':'巴克莱银行','UBS':'瑞银集团','MORGANSTANLEY':'摩根士丹利','GOLDMAN':'高盛集团','BLACKROCK':'贝莱德','VANGUARD':'先锋集团','HSBC':'汇丰银行','NOMINEES':'名义持有人'};if(!name)return name;for(const k in m)if(name===k||name.includes(k))return m[k];return name}
 function evType(t){return{'guarantee':'担保','lawsuit':'诉讼','pledge':'质押','mortgage':'质押','related_txn':'关联交易'}[t]||t}
 function ruleName(r){return{'R1':'直接持股','R2':'同一控制','R3':'共同股东','R4':'连锁董事','R5':'关键人','R6':'间接穿透','R7':'事件型'}[r]||r}
+function md(s){return s.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^- (.+)$/gm,'<li>$1</li>').replace(/(<li>[\s\S]*?<\/li>)/g,'<ul>$1</ul>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>')}
 async function load(force){
   const code=(force||document.getElementById('code').value).trim();
   document.getElementById('code').value=code;
@@ -268,7 +274,7 @@ async function genProse(code){
   const el=document.getElementById('prose-area');
   el.innerHTML='<span class=dim>生成中…（约 3-5 秒）</span>';
   try{const r=await fetch('/api/report/'+code+'/prose').then(async x=>x.ok?x.json():Promise.reject(await x.text()));
-    el.innerHTML=`<div class=prose-out>${marked.parse(r.prose||'')}</div>`;
+    el.innerHTML=`<div class=prose-out><p>${md(r.prose||'')}</p></div>`;
   }catch(e){el.innerHTML='<span class=err>'+String(e).slice(0,150)+'</span>'}
 }
 function drawNet(code,r){
@@ -308,7 +314,7 @@ async function ask(){
   const q=document.getElementById('q').value.trim();if(!q)return;
   const out=document.getElementById('ans');out.innerHTML='<span class=dim>思考中</span>';
   let r;
-  try{r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,nocache:true})}).then(async x=>x.ok?x.json():Promise.reject(await x.text()))}
+  try{const curCode=document.getElementById('code').value.trim();r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,context_code:curCode,nocache:true})}).then(async x=>x.ok?x.json():Promise.reject(await x.text()))}
   catch(e){out.innerHTML='<span class=err>'+String(e).slice(0,250)+'</span>';return}
   const v=r.verify||{};
   out.innerHTML=r.answer;

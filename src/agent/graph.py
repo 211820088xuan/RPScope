@@ -166,14 +166,16 @@ def build_graph():
 _APP = None
 
 
-def run(store: Store, engine: RuleEngine, llm: LLMClient, question: str) -> dict:
+def run(store: Store, engine: RuleEngine, llm: LLMClient, question: str, context_code: str = "") -> dict:
     global _APP
     if _APP is None:
         configure(store, engine, llm)
         _APP = build_graph()
     elif _DEPS.get("store") is not store:
         configure(store, engine, llm)
-    out = _APP.invoke({"question": question, "code": "", "codes": [], "answer": "",
+    codes = extract_codes(question)
+    code = (codes or [context_code])[0] if (codes or context_code) else ""
+    out = _APP.invoke({"question": question, "code": code, "codes": codes or ([context_code] if context_code else []), "answer": "",
                        "used_llm": False, "verify": {}, "elapsed_ms": 0.0, "_t0": 0.0, "_ctx": {}})
     return {"intent": out.get("intent", ""), "answer": out.get("answer", ""),
             "used_llm": out.get("used_llm", False), "code": out.get("code", ""),

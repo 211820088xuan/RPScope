@@ -74,7 +74,7 @@ def ask(body: dict):
             return dict(cached)
     s = _store()
     try:
-        r = agent_run(s, _eng, _llm, q)
+        r = agent_run(s, _eng, _llm, q, body.get("context_code",""))
     finally:
         s.close()
     out = {"intent": r["intent"], "answer": r["answer"], "used_llm": r["used_llm"],
