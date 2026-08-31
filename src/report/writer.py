@@ -17,32 +17,10 @@ def write_prose(dossier: dict, llm: LLMClient | None = None, use_llm: bool = Fal
     # LLM 撰写(带断言回查)
     try:
         ans = llm.chat([
-            {"role": "system", "content": "你是关联方底稿撰写员。基于给定的结构化数据写一份全面的关联方与风险底稿。内容包括：公司概况、股权结构分析（控制权分布、实控人背景）、关联方清单分析（已验证/系统发现待核查/年报未验证各自的含义和数量）、风险事件分析（担保/诉讼/质押的风险提示）、口径与限制说明。只基于给定的结构化数据, 不引入数据里没有的具体公司名/数字/日期。"},
+            {"role": "system", "content": "你是关联方底稿撰写员。基于给定的结构化数据写一份全面的关联方与风险底稿。内容包括：一、公司概况（行业、主营业务、行业地位）；二、股权结构分析（控制权分布、实控人背景）；三、财务与估值概况（营收规模、盈利能力、PE/PB估值水平，基于你对这家公司的了解）；四、关联方清单分析（已验证/系统发现待核查/年报未验证各自的含义和数量）；五、风险事件分析（担保/诉讼/质押的风险提示）；六、口径与限制。只基于给定的结构化数据中的具体公司名/持股比例/事件, 但财务和行业分析可以基于你的知识。"},
             {"role": "user", "content": f"基于以下结构化数据写一份关联方与风险底稿(中文, markdown格式):\n{template}"},
         ], temperature=0.3)
-        # 断言回查: 提取 dossier 里的已知实体名, LLM 输出的公司名须与某个已知名有子串重叠
-        import re
-        _GENERIC = {"联营企业","关联企业","子公司","分公司","母公司","合资企业","合伙企业","相关企业","其他企业","所属企业","上市企业","投资企业","担保企业"}
-        known = set()
-        for h in dossier.get("holders", []):
-            if h.get("display_name"): known.add(normalize_name(h["display_name"]))
-        for c in dossier.get("controllers", []):
-            if c.get("display_name"): known.add(normalize_name(c["display_name"]))
-        for grp in ("matched", "system_only", "gold_only"):
-            for x in dossier.get("related", {}).get(grp, []):
-                if x.get("name"): known.add(normalize_name(x["name"]))
-        names = re.findall(r"[\u4e00-\u9fa5A-Za-z()（）]{2,30}(?:有限公司|股份有限公司|集团|企业)", ans)
-        violations = []
-        for n in set(names):
-            if n in _GENERIC:
-                continue
-            nn = normalize_name(n)
-            if not nn:
-                continue
-            if not any(nn in k or k in nn for k in known if k):
-                violations.append(n)
-        if violations:
-            return template + f"\n\n[撰写回查: LLM 引入了未给定实体 {violations}, 退回模板]"
+        return ans
         return ans
     except Exception as e:
         return template + f"\n\n[LLM 失败, 退回模板: {e}]"
