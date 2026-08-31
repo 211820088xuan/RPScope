@@ -197,6 +197,8 @@ td.r,th.r{text-align:right;font-family:'JetBrains Mono',monospace}
 <script>
 function dv(v,d='—'){return(v===null||v===undefined||v===''||v==='None')?d:v}
 function cn(name){const m={'HKSCC NOMINEES LIMITED':'香港中央结算(代理)','BARCLAYS':'巴克莱银行','UBS':'瑞银集团','MORGANSTANLEY':'摩根士丹利','GOLDMAN':'高盛集团','BLACKROCK':'贝莱德','VANGUARD':'先锋集团','HSBC':'汇丰银行','NOMINEES':'名义持有人'};if(!name)return name;for(const k in m)if(name===k||name.includes(k))return m[k];return name}
+function evType(t){return{'guarantee':'担保','lawsuit':'诉讼','pledge':'质押','mortgage':'质押','related_txn':'关联交易'}[t]||t}
+function ruleName(r){return{'R1':'直接持股','R2':'同一控制','R3':'共同股东','R4':'连锁董事','R5':'关键人','R6':'间接穿透','R7':'事件型'}[r]||r}
 async function load(force){
   const code=(force||document.getElementById('code').value).trim();
   document.getElementById('code').value=code;
@@ -244,14 +246,14 @@ function renderReport(code,r){
       if(e.report_period)parts.push('('+e.report_period+')');
       return parts.join(' ');
     }).join('；');
-    h+=`<div class="rp-item" onclick="this.querySelector('.ev-detail').classList.toggle('show')"><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${s.rule}</span>${s.path?`<div class=pth>${s.path.slice(0,120)}${s.path.length>120?'…':''}</div>`:''}<div class="ev-detail">证据: ${evTxt||'无'}</div></div>`;
+    h+=`<div class="rp-item" onclick="this.querySelector('.ev-detail').classList.toggle('show')"><span class=nm>${s.name}</span><span class="tag ${cf}">${cf}</span><span class=rl>${ruleName(s.rule)}</span>${s.path?`<div class=pth>${s.path.slice(0,120)}${s.path.length>120?'…':''}</div>`:''}<div class="ev-detail">证据: ${evTxt||'无'}</div></div>`;
   });
   h+='</div>';
   const go=rr.gold_only||[],mt=rr.matched||[];
   h+=`<div class=rp-inline><span class=dim>已披露验证 (${mt.length}):</span> ${mt.slice(0,5).map(x=>x.name).join('、')||'<span class=dim>无</span>'}${mt.length>5?' … 还有 '+(mt.length-5)+' 家':''}</div>`;
   h+=`<div class=rp-inline><span class=dim>年报未验证 (${go.length}):</span> ${go.slice(0,5).map(x=>x.name).join('、')||'<span class=dim>无</span>'}${go.length>5?' … 还有 '+(go.length-5)+' 家（多为子公司/合营/联营，系统不覆盖）':''}</div></div>`;
   h+='<div class=sec><div class=sec-h>风险事件时间线</div><div class=ev-list">';
-  (r.events||[]).slice(0,12).forEach(e=>{h+=`<div class=ev-item><span class=dt>${dv(e.event_date)}</span><span class="typ ${e.event_type}">${e.event_type}</span><span class=sm>${(e.summary||'').slice(0,80)}</span></div>`});
+  (r.events||[]).slice(0,12).forEach(e=>{h+=`<div class=ev-item><span class=dt>${dv(e.event_date)}</span><span class="typ ${e.event_type}">${evType(e.event_type)}</span><span class=sm>${(e.summary||'').slice(0,80)}</span></div>`});
   if(!(r.events||[]).length)h+='<span class=empty>无</span>';
   h+='</div></div>';
   h+=`<div class=sec><div class=sec-h>口径与限制</div><div class=disc>${r.disclaimer.disclaimer}<br><br><span class=dim>数据来源: ${r.disclaimer.data_sources}<br>覆盖: ${r.disclaimer.coverage}</span></div></div>`;
@@ -268,20 +270,20 @@ function drawNet(code,r){
     const isCh=x.is_channel;
     const dname=cn(x.display_name);
     nodes.push({id,label:dname,color:isCh?'#cbd5e1':'#6b7280',font:{...F,size:11},borderWidth:isCh?1:2});
-    edges.push({from:id,to:code,label:x.ratio!=null?(isCh?'通道 ':'持股 ')+x.ratio+'%':(isCh?'通道':'持股'),arrows:'to',color:isCh?'#e2e8f0':'#9ca3af',dashes:isCh,font:{size:10,color:isCh?'#94a3b8':'#6b7280'}})});
+    edges.push({from:id,to:code,label:x.ratio!=null?(isCh?'通道 ':'持股 ')+x.ratio+'%':(isCh?'通道':'持股'),arrows:'to',color:isCh?'#94a3b8':'#9ca3af',dashes:isCh,font:{size:10,color:isCh?'#64748b':'#6b7280'}})});
   // gold_only(年报披露但系统未验证)
   (r.related.gold_only||[]).slice(0,8).forEach(s=>{
     const id='g'+i++;
     if(nodes.some(n=>n.label===s.name))return;
     nodes.push({id,label:s.name,color:'#dbeafe',font:{color:'#1e40af',face:'Noto Sans SC',size:12,bold:true},borderWidth:2});
     edges.push({from:id,to:code,label:'年报',arrows:'to',color:'#93c5fd',font:{size:10,color:'#3b82f6'}})});
-  // 事件(担保/诉讼等) — 显示对方公司名, 非事件类型
+  // 事件(担保/诉讼/质押等) — 显示对方公司名, 边标签用中文事件类型
   (r.events||[]).filter(e=>e.counterparty).slice(0,5).forEach(e=>{
     const id='e'+i++;
     const lbl=cn(e.counterparty).slice(0,12);
     nodes.push({id,label:lbl,color:'#fef3c7',font:{color:'#92400e',face:'Noto Sans SC',size:11},borderWidth:1});
-    edges.push({from:code,to:id,label:e.event_type,arrows:'to',color:'#fbbf24',dashes:true,font:{size:10,color:'#b45309'}})});
-  (r.related.system_only||[]).slice(0,12).forEach(s=>{const id='p'+i++;const col=s.confidence==='high'?'#15803d':(s.confidence==='medium'?'#b45309':'#6b7280');nodes.push({id,label:s.name,color:col,font:{...F,size:11}});edges.push({from:code,to:id,label:s.rule,arrows:'to',dashes:s.confidence==='low',color:'#9ca3af',font:{size:10,color:'#6b7280'}})});
+    edges.push({from:code,to:id,label:evType(e.event_type),arrows:'to',color:'#fbbf24',dashes:true,font:{size:10,color:'#b45309'}})});
+  (r.related.system_only||[]).slice(0,12).forEach(s=>{const id='p'+i++;const col=s.confidence==='high'?'#15803d':(s.confidence==='medium'?'#b45309':'#6b7280');nodes.push({id,label:s.name,color:col,font:{...F,size:11}});edges.push({from:code,to:id,label:ruleName(s.rule),arrows:'to',dashes:s.confidence==='low',color:'#9ca3af',font:{size:10,color:'#6b7280'}})});
   (r.related.matched||[]).forEach(s=>{const id='m'+i++;nodes.push({id,label:s.name,color:'#1e40af',font:{...F,size:11}});edges.push({from:code,to:id,label:'验证',arrows:'to',color:'#1e40af',font:{size:10,color:'#1e40af'}})});
   new vis.Network(document.getElementById('net'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{layout:{improvedLayout:true},physics:{stabilization:true,barnesHut:{springLength:160,springStrength:.04}},nodes:{shape:'box',margin:8,widthConstraint:{maximum:140},borderWidth:2},edges:{smooth:{type:'continuous'},width:1.5}});
 }
