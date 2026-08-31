@@ -42,8 +42,9 @@ def _template(d: dict) -> str:
         "## 二、股权结构",
         "前十大股东(非通道):",
     ]
-    for h in d.get("holders", [])[:10]:
-        lines.append(f"  {h.get('holder_rank')}. {h.get('display_name')} {h.get('ratio')}% ({h.get('entity_type')})")
+    for i, h in enumerate(d.get("holders", [])[:10], 1):
+        r = h.get("ratio")
+        lines.append(f"  {i}. {h.get('display_name')} {r}% ({h.get('entity_type')})" if r else f"  {i}. {h.get('display_name')} ({h.get('entity_type')})")
     if d.get("controllers"):
         lines.append("实际控制人:")
         for c in d["controllers"]:
