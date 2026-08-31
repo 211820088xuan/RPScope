@@ -114,6 +114,10 @@ td.r,th.r{text-align:right;font-family:'JetBrains Mono',monospace}
 .prose-out ul{margin:4px 0 4px 18px}
 .prose-out li{margin:2px 0}
 .prose-out p{margin:4px 0}
+.prose-out table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+.prose-out th,.prose-out td{border:1px solid var(--line);padding:4px 8px;text-align:left}
+.prose-out th{background:var(--line2);font-weight:500}
+.prose-out blockquote{border-left:3px solid var(--accent);padding:2px 10px;margin:6px 0;color:var(--ink2);background:var(--line2);font-size:12.5px}
 
 /* graph card */
 .graph-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:var(--shadow)}
@@ -133,8 +137,19 @@ td.r,th.r{text-align:right;font-family:'JetBrains Mono',monospace}
 .qa-row input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .qa-row button{padding:8px 18px;font-size:13.5px;font-weight:500;cursor:pointer;background:var(--accent);color:#fff;border:none;border-radius:6px}
 .qa-row button:hover{background:#0c5d56}
-.qa-out{font-size:14.5px;white-space:pre-wrap;background:var(--paper);padding:10px 12px;border-radius:6px;min-height:36px;border:1px solid var(--line2);font-family:'Noto Sans SC',sans-serif;line-height:1.6}
+.qa-out{font-size:14.5px;background:var(--paper);padding:10px 12px;border-radius:6px;min-height:36px;border:1px solid var(--line2);font-family:'Noto Sans SC',sans-serif;line-height:1.6}
 .qa-out .tg{font-size:11px;color:var(--ink3);margin-bottom:5px;font-family:'JetBrains Mono',monospace}
+.qa-out b{font-weight:600}
+.qa-out h1{font-family:'Noto Serif SC',serif;font-size:17px;font-weight:700;margin:10px 0 5px}
+.qa-out h2{font-family:'Noto Serif SC',serif;font-size:15px;font-weight:600;margin:8px 0 4px}
+.qa-out h3{font-family:'Noto Serif SC',serif;font-size:14px;font-weight:600;margin:6px 0 3px}
+.qa-out ul{margin:3px 0 3px 18px}
+.qa-out li{margin:2px 0}
+.qa-out p{margin:4px 0}
+.qa-out table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
+.qa-out th,.qa-out td{border:1px solid var(--line);padding:3px 7px;text-align:left}
+.qa-out th{background:var(--line2);font-weight:500}
+.qa-out blockquote{border-left:3px solid var(--accent);padding:2px 8px;margin:5px 0;color:var(--ink2);font-size:12px}
 .err{color:var(--accent);font-size:12px}
 
 @media(max-width:780px){
@@ -209,7 +224,30 @@ function dv(v,d='—'){return(v===null||v===undefined||v===''||v==='None')?d:v}
 function cn(name){const m={'HKSCC NOMINEES LIMITED':'香港中央结算(代理)','BARCLAYS':'巴克莱银行','UBS':'瑞银集团','MORGANSTANLEY':'摩根士丹利','GOLDMAN':'高盛集团','BLACKROCK':'贝莱德','VANGUARD':'先锋集团','HSBC':'汇丰银行','NOMINEES':'名义持有人'};if(!name)return name;for(const k in m)if(name===k||name.includes(k))return m[k];return name}
 function evType(t){return{'guarantee':'担保','lawsuit':'诉讼','pledge':'质押','mortgage':'质押','related_txn':'关联交易'}[t]||t}
 function ruleName(r){return{'R1':'直接持股','R2':'同一控制','R3':'共同股东','R4':'连锁董事','R5':'关键人','R6':'间接穿透','R7':'事件型'}[r]||r}
-function md(s){return s.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^- (.+)$/gm,'<li>$1</li>').replace(/(<li>[\s\S]*?<\/li>)/g,'<ul>$1</ul>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>')}
+function md(s){
+  // tables: detect | a | b | blocks
+  s=s.replace(/((?:^\|.+?\|(?:\n|$))+)/gm,function(block){
+    var rows=block.trim().split('\n').filter(function(r){return r.trim()});
+    if(rows.length<2)return block;
+    var hdr=rows[0].split('|').filter(function(c){return c.trim()}).map(function(c){return c.trim()});
+    var body=rows.slice(2).map(function(r){return r.split('|').filter(function(c){return c.trim()}).map(function(c){return c.trim()})});
+    var h='<thead><tr>'+hdr.map(function(c){return '<th>'+c+'</th>'}).join('')+'</tr></thead>';
+    var b='<tbody>'+body.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+c+'</td>'}).join('')+'</tr>'}).join('')+'</tbody>';
+    return '<table>'+h+b+'</table>';
+  });
+  // blockquote
+  s=s.replace(/^&gt; (.+)$/gm,'<blockquote>$1</blockquote>').replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>');
+  // headers
+  s=s.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  // bold
+  s=s.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+  // lists
+  s=s.replace(/^- (.+)$/gm,'<li>$1</li>');
+  s=s.replace(/(<li>[\s\S]*?<\/li>)/g,'<ul>$1</ul>');
+  // paragraphs
+  s=s.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+  return '<p>'+s+'</p>';
+}
 async function load(force){
   const code=(force||document.getElementById('code').value).trim();
   document.getElementById('code').value=code;
@@ -317,7 +355,7 @@ async function ask(){
   try{const curCode=document.getElementById('code').value.trim();r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,context_code:curCode,nocache:true})}).then(async x=>x.ok?x.json():Promise.reject(await x.text()))}
   catch(e){out.innerHTML='<span class=err>'+String(e).slice(0,250)+'</span>';return}
   const v=r.verify||{};
-  out.innerHTML=r.answer;
+  out.innerHTML=md(r.answer);
 }
 </script>
 </body>
