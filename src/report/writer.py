@@ -15,11 +15,11 @@ def write_prose(dossier: dict, llm: LLMClient | None = None, use_llm: bool = Fal
     if not use_llm or llm is None or not llm.enabled:
         return template
     # LLM 撰写(带断言回查)
-        try:
-            ans = llm.chat([
-                {"role": "system", "content": "你是关联方底稿撰写员。基于给定的结构化数据写一份全面的关联方与风险底稿。内容包括：公司概况、股权结构分析（控制权分布、实控人背景）、关联方清单分析（已验证/系统发现待核查/年报未验证各自的含义和数量）、风险事件分析（担保/诉讼/质押的风险提示）、口径与限制说明。只基于给定的结构化数据, 不引入数据里没有的具体公司名/数字/日期。"},
-                {"role": "user", "content": f"基于以下结构化数据写一份关联方与风险底稿(中文, markdown格式):\n{template}"},
-            ], temperature=0.3)
+    try:
+        ans = llm.chat([
+            {"role": "system", "content": "你是关联方底稿撰写员。基于给定的结构化数据写一份全面的关联方与风险底稿。内容包括：公司概况、股权结构分析（控制权分布、实控人背景）、关联方清单分析（已验证/系统发现待核查/年报未验证各自的含义和数量）、风险事件分析（担保/诉讼/质押的风险提示）、口径与限制说明。只基于给定的结构化数据, 不引入数据里没有的具体公司名/数字/日期。"},
+            {"role": "user", "content": f"基于以下结构化数据写一份关联方与风险底稿(中文, markdown格式):\n{template}"},
+        ], temperature=0.3)
         # 断言回查: 答案里的公司名(含后缀)须在 template 出现
         import re
         _GENERIC = {"联营企业","关联企业","子公司","分公司","母公司","合资企业","合伙企业","相关企业","其他企业","所属企业"}
