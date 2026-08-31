@@ -80,8 +80,9 @@ def configure(store: Store, engine: RuleEngine, llm: LLMClient) -> None:
 # ---- 节点 ----
 def classify_node(state: AgentState) -> dict:
     q = state["question"]
-    return {"intent": classify(q), "codes": extract_codes(q),
-            "code": (extract_codes(q) or [""])[0], "_t0": time.perf_counter()}
+    codes = extract_codes(q)
+    code = (codes or [state.get("code", "")])[0]
+    return {"intent": classify(q), "codes": codes, "code": code, "_t0": time.perf_counter()}
 
 
 def fact_node(state: AgentState) -> dict:
