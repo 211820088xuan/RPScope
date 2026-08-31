@@ -1,0 +1,223 @@
+[
+  {
+    "id": 1,
+    "question": "002594的关联方有哪些",
+    "context_code": "002594",
+    "expected": "Q1",
+    "got": "Q1",
+    "ok": true,
+    "elapsed_ms": 11515.608100045938,
+    "answer_len": 181,
+    "clarifications": [],
+    "verify": {
+      "passed": true,
+      "violations": [],
+      "checked": [
+        "002594",
+        "002594",
+        "002594",
+        "融捷投资控股集团有限公司",
+        "融捷投资控股集团有限公司"
+      ]
+    },
+    "error": null
+  },
+  {
+    "id": 2,
+    "question": "002594和300750什么关系",
+    "context_code": "002594",
+    "expected": "Q2",
+    "got": "Q2",
+    "ok": true,
+    "elapsed_ms": 14813.218199997209,
+    "answer_len": 452,
+    "clarifications": [],
+    "verify": {
+      "passed": false,
+      "violations": [
+        "（宁德时代）是中国新能源汽车产业链上的两家核心龙头企业"
+      ],
+      "checked": [
+        "002594",
+        "（宁德时代）是中国新能源汽车产业链上的两家核心龙头企业"
+      ]
+    },
+    "error": null
+  },
+  {
+    "id": 3,
+    "question": "王传福控制哪些公司",
+    "context_code": "002594",
+    "expected": "Q3",
+    "got": "Q3",
+    "ok": true,
+    "elapsed_ms": 8451.670800044667,
+    "answer_len": 56,
+    "clarifications": [],
+    "verify": {
+      "passed": true,
+      "violations": [],
+      "checked": [
+        "002594"
+      ]
+    },
+    "error": null
+  },
+  {
+    "id": 4,
+    "question": "比亚迪的前十大股东",
+    "context_code": "002594",
+    "expected": "Q4",
+    "got": "Q4",
+    "ok": true,
+    "elapsed_ms": 22817.546999955084,
+    "answer_len": 317,
+    "clarifications": [],
+    "verify": {
+      "passed": false,
+      "violations": [
+        "（香港中央结算（代理人）有限公司",
+        "中国工商银行股份有限公司"
+      ],
+      "checked": [
+        "002594",
+        "（香港中央结算（代理人）有限公司",
+        "融捷投资控股集团有限公司",
+        "香港中央结算有限公司",
+        "中国工商银行股份有限公司",
+        "融捷投资控股集团有限公司"
+      ]
+    },
+    "error": null
+  },
+  {
+    "id": 5,
+    "question": "002594的担保情况",
+    "context_code": "002594",
+    "expected": "Q5",
+    "got": "Q5",
+    "ok": true,
+    "elapsed_ms": 13467.490600014571,
+    "answer_len": 170,
+    "clarifications": [],
+    "verify": {
+      "passed": true,
+      "violations": [],
+      "checked": [
+        "002594"
+      ]
+    },
+    "error": null
+  },
+  {
+    "id": 6,
+    "question": "002594和300750的关联方重合",
+    "context_code": "002594",
+    "expected": "Q6",
+    "got": "Q6",
+    "ok": true,
+    "elapsed_ms": 8665.154099988285,
+    "answer_len": 92,
+    "clarifications": [],
+    "verify": {
+      "passed": true,
+      "violations": [],
+      "checked": []
+    },
+    "error": null
+  },
+  {
+    "id": 7,
+    "question": "这个股的后续增长情况",
+    "context_code": "002594",
+    "expected": "Q7",
+    "got": "Q7",
+    "ok": true,
+    "elapsed_ms": 46414.98510004021,
+    "answer_len": 1116,
+    "clarifications": [],
+    "verify": {
+      "passed": true,
+      "violations": [],
+      "checked": [
+        "002594",
+        "000001",
+        "002594"
+      ]
+    },
+    "error": null
+  },
+  {
+    "id": 8,
+    "question": "300750的实控人",
+    "context_code": "",
+    "expected": "Q4",
+    "got": "Q4",
+    "ok": true,
+    "elapsed_ms": 6802.070399979129,
+    "answer_len": 52,
+    "clarifications": [],
+    "verify": {
+      "passed": true,
+      "violations": [],
+      "checked": [
+        "300750"
+      ]
+    },
+    "error": null
+  },
+  {
+    "id": 9,
+    "question": "宁德时代的关联方",
+    "context_code": "",
+    "expected": "Q1",
+    "got": "Q1",
+    "ok": true,
+    "elapsed_ms": 13130.494400043972,
+    "answer_len": 587,
+    "clarifications": [],
+    "verify": {
+      "passed": false,
+      "violations": [
+        "宁波联合创新新能源投资管理合伙企业",
+        "宁波联合创新新能源投资管理合伙企业",
+        "宁波联合创新新能源投资管理合伙企业",
+        "该合伙企业",
+        "该合伙企业",
+        "需留意该合伙企业",
+        "董监高关联企业"
+      ],
+      "checked": [
+        "300750",
+        "300750",
+        "宁波联合创新新能源投资管理合伙企业",
+        "宁波联合创新新能源投资管理合伙企业",
+        "宁波联合创新新能源投资管理合伙企业",
+        "该合伙企业",
+        "该合伙企业",
+        "需留意该合伙企业",
+        "董监高关联企业"
+      ]
+    },
+    "error": null
+  },
+  {
+    "id": 10,
+    "question": "曾毓群控制哪些公司",
+    "context_code": "",
+    "expected": "Q3",
+    "got": "Q3",
+    "ok": true,
+    "elapsed_ms": 21307.19699995825,
+    "answer_len": 82,
+    "clarifications": [],
+    "verify": {
+      "passed": true,
+      "violations": [],
+      "checked": [
+        "300750"
+      ]
+    },
+    "error": null
+  }
+]
