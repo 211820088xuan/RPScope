@@ -108,6 +108,7 @@ def coreference_node(state: NLQueryState) -> dict:
     if result.get("resolved"):
         # 把解析到的实体注入到槽位中(跳过后续实体链接)
         entity = result["entity"]
+        trace._coref_entity = entity  # 补埋点: 记录指代消解结果
         code = entity.get("stock_code", "")
         if code and intent in ("Q1", "Q4", "Q5"):
             return {"coreference": result, "slots": {"company": code},

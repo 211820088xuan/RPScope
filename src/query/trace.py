@@ -49,15 +49,19 @@ class Trace:
         self.query_elapsed_ms: float = 0.0
         self.generated_query: str | None = None
         self.validation: dict | None = None
-        self.answer: str = ""
-        self.verify_result: dict | None = None
+    self.answer: str = ""
+    self.verify_result: dict | None = None
+    self._coref_entity: dict | None = None  # 补埋点: 指代消解的目标实体
 
     def add_event(self, node: str, data: dict):
         self.events.append({"node": node, "elapsed_ms": round((time.perf_counter() - self.t0) * 1000, 1), **data})
 
-    def add_llm_call(self, purpose: str, elapsed_ms: float, tokens: int = 0, retried: bool = False):
+    def add_llm_call(self, purpose: str, elapsed_ms: float, tokens: int = 0, retried: bool = False,
+                     output_summary: str = "", error_type: str = ""):
         self.llm_calls.append({"purpose": purpose, "elapsed_ms": round(elapsed_ms, 1),
-                               "tokens": tokens, "retried": retried})
+                               "tokens": tokens, "retried": retried,
+                               "output_summary": output_summary[:200],  # 结构化输出摘要, 不含完整prompt
+                               "error_type": error_type})
 
     def save(self) -> str:
         qid = hashlib.md5(f"{self.question}{time.time()}".encode()).hexdigest()[:8]
@@ -69,9 +73,11 @@ class Trace:
             "uncertain": self.uncertain,
             "classification_source": self.classification_source,
             "llm_calls": [{"purpose": c.get("purpose",""), "elapsed_ms": c.get("elapsed_ms",0),
-                           "tokens": c.get("tokens",0), "retried": c.get("retried",False)}
-                          for c in self.llm_calls],  # 不留存 prompt
+                           "tokens": c.get("tokens",0), "retried": c.get("retried",False),
+                           "output_summary": c.get("output_summary",""), "error_type": c.get("error_type","")}
+                          for c in self.llm_calls],
             "slots": {k: v for k, v in self.slots.items() if not k.startswith("_")},
+            "coreference_resolved": self._coref_entity,  # 补埋点: 指代消解结果
             "entity_links": [{"slot": k, "method": v} for k, v in self.entity_links.items() if k.startswith("_")],
             "template_id": self.template_id,
             "query_params": self.query_params,
