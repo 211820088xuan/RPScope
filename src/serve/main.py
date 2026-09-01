@@ -208,9 +208,13 @@ def ask_stream(q: str, context_code: str = "", session_id: str = ""):
             yield f"event: stage\ndata: {json.dumps({'stage': 'entity_link', 'clarifications': linked['clarifications']}, ensure_ascii=False)}\n\n"
 
             # 4. 模板执行 → 推结构化结果(LLM 之前)
-            if intent != "Q7" and not linked["clarifications"] and not linked["errors"]:
-                executor = get_executor(intent)
-                result = executor(s, _eng, linked["slots"])
+            if intent not in ("Q7",) and not linked["clarifications"] and not linked["errors"]:
+                if intent == "Q8":
+                    from src.query.compare import compare as do_compare
+                    result = do_compare(s, _eng, linked["slots"].get("company_a",""), linked["slots"].get("company_b",""))
+                else:
+                    executor = get_executor(intent)
+                    result = executor(s, _eng, linked["slots"])
                 yield f"event: data\ndata: {json.dumps(result, ensure_ascii=False, default=str)}\n\n"
 
                 # 记录对话轮次(更新焦点栈)
@@ -272,6 +276,93 @@ def random_company():
         return dict(row) if row else {}
     finally:
         s.close()
+
+
+@app.get("/api/traces")
+def traces_list(n: int = 20):
+    """列出最近 N 条 trace 摘要。"""
+    import json, glob, os
+    from pathlib import Path
+    trace_dir = Path(".cache/traces")
+    if not trace_dir.exists():
+        return {"traces": [], "total": 0}
+    files = sorted(trace_dir.glob("*.json"), key=os.path.getmtime, reverse=True)[:n]
+    summaries = []
+    for f in files:
+        try:
+            t = json.loads(f.read_text(encoding="utf-8"))
+            summaries.append({
+                "trace_id": f.stem,
+                "question": t.get("question", "")[:60],
+                "intent": t.get("intent", ""),
+                "uncertain": t.get("uncertain", False),
+                "classification_source": t.get("classification_source", ""),
+                "total_ms": t.get("total_elapsed_ms", 0),
+                "verify_passed": (t.get("verify_result") or {}).get("passed", True),
+                "llm_calls": len(t.get("llm_calls", [])),
+                "query_result_count": t.get("query_result_count", 0),
+                "generated_query": t.get("generated_query") is not None,
+                "validation_passed": (t.get("validation") or {}).get("passed", True) if t.get("validation") else True,
+            })
+        except Exception:
+            pass
+    return {"traces": summaries, "total": len(summaries)}
+
+
+@app.get("/api/traces/{trace_id}")
+def trace_detail(trace_id: str):
+    """返回单条完整 trace。"""
+    import json
+    from pathlib import Path
+    f = Path(".cache/traces") / f"{trace_id}.json"
+    if not f.exists():
+        raise HTTPException(404, "trace not found")
+    return json.loads(f.read_text(encoding="utf-8"))
+
+
+@app.get("/api/traces/stats")
+def traces_stats():
+    """聚合统计。"""
+    import json, glob, os
+    from collections import defaultdict
+    from pathlib import Path
+    trace_dir = Path(".cache/traces")
+    if not trace_dir.exists():
+        return {}
+    files = sorted(trace_dir.glob("*.json"), key=os.path.getmtime, reverse=True)[:200]
+    by_intent = defaultdict(lambda: {"count": 0, "total_ms": [], "llm": 0, "clarify": 0, "verify_fail": 0, "q7_generated": 0, "q7_rejected": 0})
+    total_llm_calls = 0
+    total_tokens = 0
+    for f in files:
+        try:
+            t = json.loads(f.read_text(encoding="utf-8"))
+            intent = t.get("intent", "unknown")
+            d = by_intent[intent]
+            d["count"] += 1
+            d["total_ms"].append(t.get("total_elapsed_ms", 0))
+            d["llm"] += len(t.get("llm_calls", []))
+            total_llm_calls += len(t.get("llm_calls", []))
+            v = t.get("verify_result") or {}
+            if not v.get("passed", True):
+                d["verify_fail"] += 1
+            if t.get("generated_query"):
+                d["q7_generated"] += 1
+                val = t.get("validation") or {}
+                if not val.get("passed", True):
+                    d["q7_rejected"] += 1
+        except Exception:
+            pass
+    result = {}
+    for intent, d in sorted(by_intent.items()):
+        ms = sorted(d["total_ms"])
+        p50 = ms[len(ms)//2] if ms else 0
+        p95 = ms[min(int(len(ms)*0.95), len(ms)-1)] if ms else 0
+        result[intent] = {
+            "count": d["count"], "p50_ms": p50, "p95_ms": p95,
+            "llm_calls": d["llm"], "verify_fail": d["verify_fail"],
+            "q7_generated": d["q7_generated"], "q7_rejected": d["q7_rejected"],
+        }
+    return {"by_intent": result, "total_traces": len(files), "total_llm_calls": total_llm_calls}
 
 
 @app.get("/")

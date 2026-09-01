@@ -200,6 +200,22 @@ def extract_q6(conn, question: str, context_code: str = "") -> dict | None:
     return None
 
 
+def extract_q8(conn, question: str, context_code: str = "") -> dict | None:
+    """Q8: 对比分析。槽位: company_a, company_b"""
+    companies = _find_all_companies(conn, question, context_code)
+    if len(companies) >= 2:
+        slots = {"company_a": companies[0]["code"], "company_b": companies[1]["code"]}
+        clarifs = []
+        for i, c in enumerate(companies[:2]):
+            if c.get("ambiguous"):
+                clarifs.append({"slot": "company_" + chr(97+i), "input": c.get("name", ""),
+                                "candidates": c["candidates"]})
+        if clarifs:
+            slots["_clarify"] = clarifs
+        return slots
+    return None
+
+
 _EXTRACTORS = {
     "Q1": extract_q1,
     "Q2": extract_q2,
@@ -207,6 +223,7 @@ _EXTRACTORS = {
     "Q4": extract_q4,
     "Q5": extract_q5,
     "Q6": extract_q6,
+    "Q8": extract_q8,
 }
 
 

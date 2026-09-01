@@ -23,6 +23,7 @@ from src.query.trace import Trace
 from src.query.rule_slots import rule_extract
 from src.query.coreference import resolve_with_llm_fallback
 from src.query.conversation import get_session, ConversationState
+from src.query.compare import compare as do_compare
 from src.rules.engine import RuleEngine
 from src.store.db import Store
 from src.agent.verifier import verify_answer
@@ -192,6 +193,17 @@ def execute_node(state: NLQueryState) -> dict:
         trace.query_elapsed_ms = elapsed
         trace.generated_query = result.get("sql")
         trace.add_event("execute", {"source": "generated_query", "n": result.get("n", 0), "elapsed_ms": elapsed})
+    elif intent == "Q8":
+        # 对比分析
+        slots = state["linked_slots"]
+        t0 = time.perf_counter()
+        result = do_compare(store, engine, slots.get("company_a",""), slots.get("company_b",""))
+        elapsed = (time.perf_counter() - t0) * 1000
+        trace.query_elapsed_ms = elapsed
+        trace.template_id = "Q8"
+        trace.query_params = {"company_a": slots.get("company_a",""), "company_b": slots.get("company_b","")}
+        trace.query_result_count = result.get("related",{}).get("n_overlap",0)
+        trace.add_event("execute", {"template": "Q8", "n": trace.query_result_count, "elapsed_ms": elapsed})
     else:
         # 模板执行
         executor = get_executor(intent)

@@ -37,11 +37,22 @@ _PLACE_PREFIXES = ("贵州", "深圳", "宁波", "北京", "上海", "广东", "
     "沈阳", "长春", "哈尔滨", "昆明", "兰州", "合肥", "福州", "南昌", "太原")
 
 
+# 通用词表(去地名前缀后只剩这些词的别名不进词典)
+_GENERIC_WORDS = {"银行", "能源", "证券", "地产", "科技", "集团", "控股", "发展",
+    "实业", "建工", "建科", "旅游", "机场", "热电", "燃气", "矿业", "路桥",
+    "钢铁", "铜业", "高新", "高科", "高速", "黄金", "啤酒", "医药", "凤凰",
+    "新能", "投资", "置业", "置业", "股份"}
+
+
 def _derive_alias(name: str) -> str | None:
-    """从 short_name 派生别名: 去地名前缀。返回 None 表示无法派生。"""
+    """从 short_name 派生别名: 去地名前缀。返回 None 表示无法派生或被过滤。"""
     for prefix in _PLACE_PREFIXES:
         if name.startswith(prefix) and len(name) > len(prefix) + 1:
-            return name[len(prefix):]
+            alias = name[len(prefix):]
+            # T8: 过滤通用词
+            if _norm(alias) in _GENERIC_WORDS or len(alias) < 2:
+                return None
+            return alias
     return None
 
 

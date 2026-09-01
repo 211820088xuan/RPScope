@@ -45,6 +45,10 @@ def classify(question: str) -> dict:
     q = question.strip()
     cfg = _load_config()
 
+    # Q8: 对比分析 (优先于 Q6)
+    if _check_keywords(q, ["对比", "比较", "比较一下", "对比一下", "区别", "差异"]):
+        return {"intent": "Q8", "confidence": 0.95, "rule_hit": "compare_keyword", "uncertain": False}
+
     # Q6: 两公司 + 关联方重合/交集
     if _check_keywords(q, cfg["Q6_overlap"]["keywords"]) or _check_patterns(q, cfg["Q6_overlap"]["patterns"]):
         return {"intent": "Q6", "confidence": 0.95, "rule_hit": "keyword/pattern", "uncertain": False}
