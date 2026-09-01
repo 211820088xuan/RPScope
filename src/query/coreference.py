@@ -38,12 +38,21 @@ def _has_pronoun(question: str) -> str | None:
 
 # 序数检测
 def _extract_ordinal(question: str) -> int | None:
-    """提取序数词, 返回 0-based 索引或 None。"""
+    """提取序数词, 返回 0-based 索引或 None。支持任意'第N个'。"""
     cfg = _load_cfg()
-    # 按 key 长度降序匹配(避免"第二"匹配到"第二个"之前)
+    # 先匹配配置中的已知序数词(按长度降序)
     for kw, idx in sorted(cfg["ordinals"].items(), key=lambda x: -len(x[0])):
         if kw in question:
             return idx
+    # 通配: 第N个/第N (中文数字)
+    cn_map = {"一":0,"二":1,"三":2,"四":3,"五":4,"六":5,"七":6,"八":7,"九":8,"十":9}
+    m = re.search(r"第([一二三四五六七八九十])个?", question)
+    if m:
+        return cn_map.get(m.group(1), None)
+    # 阿拉伯数字
+    m = re.search(r"第(\d+)个?", question)
+    if m:
+        return int(m.group(1)) - 1
     return None
 
 
@@ -77,6 +86,14 @@ def resolve(question: str, state: ConversationState, has_entity: bool,
 
     # --- 代词指代 ---
     if pronoun:
+        # 检查焦点栈中有几个不同的 user_mention 实体
+        user_mentions = [f for f in state.focus_stack if f.source == "user_mention"]
+        unique_codes = set(f.stock_code or str(f.entity_id) for f in user_mentions if f.stock_code or f.entity_id)
+        if len(unique_codes) > 1:
+            # 多个实体 → 歧义, 必须澄清
+            return {"resolved": False,
+                    "clarify": f"上一轮提到了多个实体({', '.join(f.name for f in user_mentions[:3])}), 请问「{pronoun}」指哪一个？",
+                    "candidates": [{"name": f.name, "stock_code": f.stock_code} for f in user_mentions[:5]]}
         focus = state.get_focus_top()
         if focus:
             return {"resolved": True,
