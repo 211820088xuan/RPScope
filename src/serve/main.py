@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.agent.graph import run as agent_run
@@ -118,6 +118,78 @@ def report_prose(code: str):
         raise HTTPException(500, str(e))
     finally:
         s.close()
+
+
+@app.get("/api/ask/stream")
+def ask_stream(q: str, context_code: str = ""):
+    """SSE 流式问答: stage → data(结构化结果) → token(LLM流式) → verify → done。"""
+    import json, time as _time
+    from src.query.pipeline import run as nlq_run
+    from src.query.intent import classify as rule_classify
+    from src.query.rule_slots import rule_extract
+    from src.query.entity_link import link_slots
+    from src.query.templates import get_executor
+    from src.agent.verifier import verify_answer
+
+    def event_gen():
+        t0 = _time.perf_counter()
+        s = _store()
+        try:
+            # 1. 规则分类
+            r = rule_classify(q)
+            intent = r["intent"]
+            yield f"event: stage\ndata: {json.dumps({'stage': 'classify', 'intent': intent, 'confidence': r['confidence']}, ensure_ascii=False)}\n\n"
+
+            # 2. 槽位抽取
+            slots = rule_extract(intent, q, s.conn, context_code) or {}
+            if not slots and intent in ("Q1","Q4","Q5") and context_code:
+                slots = {"company": context_code}
+            yield f"event: stage\ndata: {json.dumps({'stage': 'slot_fill', 'slots': {k:v for k,v in slots.items() if not k.startswith('_')}, 'source': 'rule'}, ensure_ascii=False)}\n\n"
+
+            # 3. 实体链接
+            linked = link_slots(s, intent, slots)
+            yield f"event: stage\ndata: {json.dumps({'stage': 'entity_link', 'clarifications': linked['clarifications']}, ensure_ascii=False)}\n\n"
+
+            # 4. 模板执行 → 推结构化结果(LLM 之前)
+            if intent != "Q7" and not linked["clarifications"] and not linked["errors"]:
+                executor = get_executor(intent)
+                result = executor(s, _eng, linked["slots"])
+                yield f"event: data\ndata: {json.dumps(result, ensure_ascii=False, default=str)}\n\n"
+
+                # 5. LLM 流式生成回答
+                if _llm.enabled:
+                    yield f"event: stage\ndata: {json.dumps({'stage': 'generate'}, ensure_ascii=False)}\n\n"
+                    ctx = json.dumps(result, ensure_ascii=False, default=str)[:3000]
+                    code = linked["slots"].get("company", context_code)
+                    try:
+                        full_answer = ""
+                        for token in _llm.chat_stream([
+                            {"role": "system", "content": f"你是关联方分析助手。用户正在查看股票 {code}。基于结构化查询结果回答, 用中文。财务和行业分析可以基于你的知识。不要加免责声明。"},
+                            {"role": "user", "content": f"问题: {q}\n\n查询结果:\n{ctx}"},
+                        ]):
+                            full_answer += token
+                            yield f"event: token\ndata: {json.dumps({'text': token}, ensure_ascii=False)}\n\n"
+
+                        # 6. 回查
+                        v = verify_answer(s, full_answer)
+                        yield f"event: verify\ndata: {json.dumps({'passed': v['passed'], 'violations': v.get('violations',[])}, ensure_ascii=False)}\n\n"
+                    except Exception as e:
+                        yield f"event: error\ndata: {json.dumps({'error': str(e)[:100]}, ensure_ascii=False)}\n\n"
+                else:
+                    yield f"event: token\ndata: {json.dumps({'text': json.dumps(result, ensure_ascii=False, default=str)[:500]}, ensure_ascii=False)}\n\n"
+                    yield f"event: verify\ndata: {json.dumps({'passed': True}, ensure_ascii=False)}\n\n"
+            else:
+                # Q7 或有澄清 → 退回非流式
+                r2 = nlq_run(s, _eng, _llm, q, context_code)
+                yield f"event: data\ndata: {json.dumps({'answer': r2['answer'][:500], 'clarifications': r2.get('clarifications', [])}, ensure_ascii=False)}\n\n"
+                yield f"event: verify\ndata: {json.dumps({'passed': r2.get('verify',{}).get('passed', True)}, ensure_ascii=False)}\n\n"
+
+            elapsed = (_time.perf_counter() - t0) * 1000
+            yield f"event: done\ndata: {json.dumps({'elapsed_ms': round(elapsed)}, ensure_ascii=False)}\n\n"
+        finally:
+            s.close()
+
+    return StreamingResponse(event_gen(), media_type="text/event-stream")
 
 
 @app.get("/api/random")

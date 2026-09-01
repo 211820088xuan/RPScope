@@ -84,6 +84,16 @@ class LLMClient:
             pass
         return resp.choices[0].message.content or ""
 
+    def chat_stream(self, messages: list[dict], temperature: float = 0.0):
+        """流式 chat, yield token chunks。"""
+        if not self.enabled:
+            raise RuntimeError("LLM disabled")
+        resp = self.client.chat.completions.create(
+            model=self.model, messages=messages, temperature=temperature, stream=True)
+        for chunk in resp:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+
     def chat(self, messages: list[dict], temperature: float = 0.0) -> str:
         if not self.enabled:
             raise RuntimeError("LLM disabled (RPSCOPE_LLM_ENABLED=false 或无 key")

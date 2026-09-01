@@ -89,7 +89,7 @@ def slot_fill_node(state: NLQueryState) -> dict:
         trace.add_event("slot_fill", {"slots": slots, "source": "llm"})
     else:
         # 确定: 先规则抽取, 失败才调 LLM
-        r = rule_extract(intent, q, state.get("context_code", ""))
+        r = rule_extract(intent, q, _DEPS["store"].conn, state.get("context_code", ""))
         if r:
             slots = r
             trace.add_event("slot_fill", {"slots": slots, "source": "rule"})

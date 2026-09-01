@@ -350,12 +350,77 @@ async function randomCo(){
 }
 async function ask(){
   const q=document.getElementById('q').value.trim();if(!q)return;
-  const out=document.getElementById('ans');out.innerHTML='<span class=dim>思考中</span>';
-  let r;
-  try{const curCode=document.getElementById('code').value.trim();r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,context_code:curCode,nocache:true})}).then(async x=>x.ok?x.json():Promise.reject(await x.text()))}
-  catch(e){out.innerHTML='<span class=err>'+String(e).slice(0,250)+'</span>';return}
-  const v=r.verify||{};
-  out.innerHTML=md(r.answer);
+  const out=document.getElementById('ans');
+  out.innerHTML='<span class=dim>思考中…</span>';
+  const curCode=document.getElementById('code').value.trim();
+
+  // SSE 流式
+  const url=`/api/ask/stream?q=${encodeURIComponent(q)}&context_code=${curCode}`;
+  const es=new EventSource(url);
+  let answerText='';
+  let structuredData=null;
+  let draftEl=null;
+
+  es.addEventListener('stage',(e)=>{
+    const d=JSON.parse(e.data);
+    if(d.stage==='classify')out.innerHTML=`<span class=dim>意图: ${d.intent}</span>`;
+    else if(d.stage==='slot_fill')out.innerHTML=`<span class=dim>抽取槽位…</span>`;
+    else if(d.stage==='entity_link'){
+      if(d.clarifications&&d.clarifications.length){out.innerHTML=`<span class=dim>实体歧义, 需澄清</span>`}
+      else out.innerHTML=`<span class=dim>查询中…</span>`;
+    }
+    else if(d.stage==='generate'){
+      out.innerHTML='';
+      draftEl=document.createElement('div');
+      draftEl.className='qa-draft';
+      draftEl.innerHTML='<span class=dim style=color:#0f766e>生成中…</span><br>';
+      out.appendChild(draftEl);
+    }
+  });
+
+  es.addEventListener('data',(e)=>{
+    const d=JSON.parse(e.data);
+    structuredData=d;
+    if(d.answer){out.innerHTML=md(d.answer)}
+    else{
+      const sec=document.createElement('div');
+      sec.style.cssText='font-size:12px;color:#64748b;margin-bottom:6px';
+      let n=d.n||d.parties&&d.parties.length||d.results&&d.results.length||d.events&&d.events.length||0;
+      sec.textContent=`结构化结果: ${n} 条`;
+      out.appendChild(sec);
+    }
+  });
+
+  es.addEventListener('token',(e)=>{
+    const d=JSON.parse(e.data);
+    answerText+=d.text;
+    if(draftEl){
+      // 移除"生成中…"提示, 逐字追加
+      const dim=draftEl.querySelector('.dim');
+      if(dim)dim.remove();
+      const ansEl=document.createElement('span');
+      ansEl.innerHTML=md(answerText);
+      draftEl.innerHTML='';
+      draftEl.appendChild(ansEl);
+    }
+  });
+
+  es.addEventListener('verify',(e)=>{
+    const d=JSON.parse(e.data);
+    if(!d.passed&&draftEl){
+      draftEl.style.opacity='0.5';
+      draftEl.insertAdjacentHTML('beforeend','<br><span style=color:#b91c1c;font-size:11px>⚠ 回查未通过, 部分内容可能不准确</span>');
+    }
+  });
+
+  es.addEventListener('error',(e)=>{
+    try{const d=JSON.parse(e.data);out.innerHTML+='<span class=err>'+d.error+'</span>'}catch(_){out.innerHTML+='<span class=err>连接中断</span>'}
+    es.close();
+  });
+
+  es.addEventListener('done',()=>{
+    es.close();
+  });
 }
 </script>
 </body>

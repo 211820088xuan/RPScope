@@ -1,70 +1,144 @@
-"""T3: 规则槽位抽取 — 为 Q1-Q6 写模式匹配, 避免调 LLM。
+"""T1+T2: 规则槽位抽取 — 词典匹配优先, 正则兜底。
 
-规则抽取成功则不调 LLM, 失败才走 LLM 兜底。
+优先级: 股票代码精确 > 词典最长匹配 > 正则 > LLM 兜底
+歧义(多匹配) → 走澄清机制, 不自选。
 """
 from __future__ import annotations
-import re
+import re, sqlite3
+from src.query.dict_match import CompanyMatcher, PersonMatcher, Match
 
-# 6位股票代码
 _CODE = re.compile(r"(?<!\d)(\d{6})(?!\d)")
-# 公司名: 中文+可能的有限公司/集团等后缀, 或已知简称
-_COMPANY_NAME = re.compile(r"([\u4e00-\u9fa5]{2,8}(?:股份有限公司|有限公司|集团|控股|投资|银行|保险|医药|时代|绿能|精密))")
-# 人名: 2-4字中文, 不含公司后缀
-_PERSON_NAME = re.compile(r"([\u4e00-\u9fa5]{2,4})(?=控制|持有|担任|任职|在哪些)")
-# 事件类型关键词
 _EVENT_MAP = {"担保": "guarantee", "诉讼": "lawsuit", "质押": "pledge", "法律纠纷": "lawsuit"}
-# 角色类型关键词
 _ROLE_MAP = {
     "前十大股东": "holder", "十大股东": "holder", "股东": "holder",
     "实际控制人": "controller", "实控人": "controller",
     "董监高": "all", "高管": "all", "董事": "director", "监事": "director", "总经理": "director",
 }
-# 规则ID
-_RULE_IDS = re.compile(r"R([1-7])")
+
+_matcher_cache: dict = {}
 
 
-def extract_q1(question: str, context_code: str = "") -> dict | None:
+def _get_company_matcher(conn: sqlite3.Connection) -> CompanyMatcher:
+    key = id(conn)
+    if key not in _matcher_cache:
+        _matcher_cache[key] = CompanyMatcher(conn)
+    return _matcher_cache[key]
+
+
+def _get_person_matcher(conn: sqlite3.Connection) -> PersonMatcher:
+    key = "p" + str(id(conn))
+    if key not in _matcher_cache:
+        _matcher_cache[key] = PersonMatcher(conn)
+    return _matcher_cache[key]
+
+
+def _find_company(conn, text: str, context_code: str = "") -> dict | None:
+    """用词典匹配找公司, 返回 {code, name, method, ambiguous, candidates} 或 None。"""
+    cm = _get_company_matcher(conn)
+    m = cm.match(text)
+    if m:
+        return {"code": m.stock_code, "name": m.text, "method": m.method,
+                "ambiguous": m.ambiguous, "candidates": m.candidates}
+    # 兜底: context_code
+    if context_code:
+        return {"code": context_code, "name": "", "method": "context_fallback",
+                "ambiguous": False, "candidates": []}
+    return None
+
+
+def _find_all_companies(conn, text: str, context_code: str = "") -> list[dict]:
+    """找 text 中所有公司, 用于 Q2/Q6。"""
+    cm = _get_company_matcher(conn)
+    matches = cm.all_matches(text)
+    results = []
+    for m in matches:
+        results.append({"code": m.stock_code, "name": m.text, "method": m.method,
+                        "ambiguous": m.ambiguous, "candidates": m.candidates})
+    # 不足 2 个时用 context_code 补
+    if len(results) < 2 and context_code:
+        results.append({"code": context_code, "name": "", "method": "context_fallback",
+                        "ambiguous": False, "candidates": []})
+    return results
+
+
+def _find_person(conn, text: str) -> dict | None:
+    """用词典匹配找人名。"""
+    pm = _get_person_matcher(conn)
+    m = pm.match(text)
+    if m:
+        return {"entity_id": m.entity_id, "name": m.text, "method": m.method,
+                "ambiguous": m.ambiguous, "candidates": m.candidates}
+    return None
+
+
+def _find_entity(conn, text: str) -> dict | None:
+    """找人/机构: 先查人名词典, 再查公司词典。"""
+    p = _find_person(conn, text)
+    if p:
+        return p
+    c = _find_company(conn, text)
+    if c:
+        return {**c, "entity_id": 0}
+    return None
+
+
+def extract_q1(conn, question: str, context_code: str = "") -> dict | None:
     """Q1: 查公司关联方。槽位: company"""
-    code = _CODE.search(question)
-    if code:
-        return {"company": code.group(1)}
-    name = _COMPANY_NAME.search(question)
-    if name:
-        return {"company": name.group(1)}
-    if context_code:
-        return {"company": context_code}
-    return None
-
-
-def extract_q2(question: str, context_code: str = "") -> dict | None:
-    """Q2: 两实体关系。槽位: entity_a, entity_b"""
-    codes = _CODE.findall(question)
-    if len(codes) >= 2:
-        return {"entity_a": codes[0], "entity_b": codes[1]}
-    # 两个中文实体名
-    m = re.search(r"([\u4e00-\u9fa5A-Za-z]{2,15})\s*(?:和|与|跟|及)\s*([\u4e00-\u9fa5A-Za-z]{2,15})", question)
-    if m:
-        slots = {"entity_a": m.group(1), "entity_b": m.group(2)}
+    c = _find_company(conn, question, context_code)
+    if c:
+        slots = {"company": c["code"]}
+        if c.get("ambiguous"):
+            slots["_clarify"] = {"slot": "company", "input": c.get("name", c["code"]),
+                                 "candidates": c["candidates"]}
         return slots
-    if context_code:
-        name = _COMPANY_NAME.search(question)
-        if name:
-            return {"entity_a": name.group(1), "entity_b": context_code}
     return None
 
 
-def extract_q3(question: str, context_code: str = "") -> dict | None:
+def extract_q2(conn, question: str, context_code: str = "") -> dict | None:
+    """Q2: 两实体关系。槽位: entity_a, entity_b"""
+    # 先找双公司
+    companies = _find_all_companies(conn, question, context_code)
+    if len(companies) >= 2:
+        slots = {"entity_a": companies[0]["code"], "entity_b": companies[1]["code"]}
+        clarifs = []
+        for i, c in enumerate(companies[:2]):
+            if c.get("ambiguous"):
+                clarifs.append({"slot": "entity_" + chr(97+i), "input": c.get("name", ""),
+                                "candidates": c["candidates"]})
+        if clarifs:
+            slots["_clarify"] = clarifs
+        return slots
+    # 找人+公司 或 人+人
+    persons = []
+    pm = _get_person_matcher(conn)
+    # 逐字符偏移找两个人名
+    text_norm = question
+    for name in pm._sorted_names:
+        if name in text_norm:
+            persons.append(name)
+            text_norm = text_norm.replace(name, " " * len(name), 1)  # 避免重复匹配
+            if len(persons) >= 2:
+                break
+    if len(persons) >= 2:
+        return {"entity_a": persons[0], "entity_b": persons[1]}
+    if len(persons) == 1 and len(companies) >= 1:
+        return {"entity_a": persons[0], "entity_b": companies[0]["code"]}
+    if len(persons) == 1 and context_code:
+        return {"entity_a": persons[0], "entity_b": context_code}
+    if len(companies) == 1 and context_code and companies[0]["code"] != context_code:
+        return {"entity_a": companies[0]["code"], "entity_b": context_code}
+    return None
+
+
+def extract_q3(conn, question: str, context_code: str = "") -> dict | None:
     """Q3: 反向查询。槽位: entity, relation_type?"""
-    m = _PERSON_NAME.search(question)
-    if m:
-        entity = m.group(1)
-    else:
-        m2 = _COMPANY_NAME.search(question)
-        if m2:
-            entity = m2.group(1)
-        else:
-            return None
-    slots = {"entity": entity}
+    e = _find_entity(conn, question)
+    if not e:
+        return None
+    slots = {"entity": e.get("entity_id") or e.get("name")}
+    if e.get("ambiguous"):
+        slots["_clarify"] = {"slot": "entity", "input": e.get("name", ""),
+                             "candidates": e["candidates"]}
     if "控制" in question:
         slots["relation_type"] = "control"
     elif "持股" in question or "持有" in question:
@@ -74,37 +148,33 @@ def extract_q3(question: str, context_code: str = "") -> dict | None:
     return slots
 
 
-def extract_q4(question: str, context_code: str = "") -> dict | None:
+def extract_q4(conn, question: str, context_code: str = "") -> dict | None:
     """Q4: 公司角色。槽位: company, role_type"""
-    code = _CODE.search(question)
-    company = code.group(1) if code else None
-    if not company:
-        name = _COMPANY_NAME.search(question)
-        company = name.group(1) if name else None
-    if not company and context_code:
-        company = context_code
-    if not company:
+    c = _find_company(conn, question, context_code)
+    if not c:
         return None
+    slots = {"company": c["code"]}
+    if c.get("ambiguous"):
+        slots["_clarify"] = {"slot": "company", "input": c.get("name", ""),
+                             "candidates": c["candidates"]}
     role = "all"
     for kw, rt in sorted(_ROLE_MAP.items(), key=lambda x: -len(x[0])):
         if kw in question:
             role = rt
             break
-    return {"company": company, "role_type": role}
+    slots["role_type"] = role
+    return slots
 
 
-def extract_q5(question: str, context_code: str = "") -> dict | None:
+def extract_q5(conn, question: str, context_code: str = "") -> dict | None:
     """Q5: 风险事件。槽位: company, event_types?"""
-    code = _CODE.search(question)
-    company = code.group(1) if code else None
-    if not company:
-        name = _COMPANY_NAME.search(question)
-        company = name.group(1) if name else None
-    if not company and context_code:
-        company = context_code
-    if not company:
+    c = _find_company(conn, question, context_code)
+    if not c:
         return None
-    slots = {"company": company}
+    slots = {"company": c["code"]}
+    if c.get("ambiguous"):
+        slots["_clarify"] = {"slot": "company", "input": c.get("name", ""),
+                             "candidates": c["candidates"]}
     event_types = []
     for kw, et in _EVENT_MAP.items():
         if kw in question:
@@ -114,18 +184,19 @@ def extract_q5(question: str, context_code: str = "") -> dict | None:
     return slots
 
 
-def extract_q6(question: str, context_code: str = "") -> dict | None:
+def extract_q6(conn, question: str, context_code: str = "") -> dict | None:
     """Q6: 关联方重合。槽位: company_a, company_b"""
-    codes = _CODE.findall(question)
-    if len(codes) >= 2:
-        return {"company_a": codes[0], "company_b": codes[1]}
-    names = _COMPANY_NAME.findall(question)
-    if len(names) >= 2:
-        return {"company_a": names[0], "company_b": names[1]}
-    if len(codes) == 1 and len(names) >= 1:
-        return {"company_a": codes[0], "company_b": names[0]}
-    if context_code and len(names) >= 1:
-        return {"company_a": context_code, "company_b": names[0]}
+    companies = _find_all_companies(conn, question, context_code)
+    if len(companies) >= 2:
+        slots = {"company_a": companies[0]["code"], "company_b": companies[1]["code"]}
+        clarifs = []
+        for i, c in enumerate(companies[:2]):
+            if c.get("ambiguous"):
+                clarifs.append({"slot": "company_" + chr(97+i), "input": c.get("name", ""),
+                                "candidates": c["candidates"]})
+        if clarifs:
+            slots["_clarify"] = clarifs
+        return slots
     return None
 
 
@@ -139,9 +210,10 @@ _EXTRACTORS = {
 }
 
 
-def rule_extract(intent: str, question: str, context_code: str = "") -> dict | None:
-    """规则槽位抽取。成功返回 slots, 失败返回 None(走 LLM 兜底)。"""
+def rule_extract(intent: str, question: str, conn: sqlite3.Connection, context_code: str = "") -> dict | None:
+    """规则槽位抽取(词典匹配)。成功返回 slots, 失败返回 None(走 LLM 兜底)。
+    注意: conn 参数是 sqlite3.Connection, 不是 Store 对象。"""
     fn = _EXTRACTORS.get(intent)
     if not fn:
         return None
-    return fn(question, context_code)
+    return fn(conn, question, context_code)
