@@ -75,12 +75,13 @@ def ask(body: dict):
             return dict(cached)
     s = _store()
     try:
-        r = nlq_run(s, _eng, _llm, q, body.get("context_code",""))
+        r = nlq_run(s, _eng, _llm, q, body.get("context_code",""), body.get("session_id",""))
     finally:
         s.close()
     out = {"intent": r["intent"], "answer": r["answer"], "used_llm": r["used_llm"],
            "verify": r["verify"], "elapsed_ms": r["elapsed_ms"], "cache_hit": False,
-           "clarifications": r.get("clarifications", [])}
+           "clarifications": r.get("clarifications", []),
+           "coreference": r.get("coreference", {})}
     _cache.set(q, out)
     return out
 
@@ -121,15 +122,17 @@ def report_prose(code: str):
 
 
 @app.get("/api/ask/stream")
-def ask_stream(q: str, context_code: str = ""):
-    """SSE 流式问答: stage → data(结构化结果) → token(LLM流式) → verify → done。"""
-    import json, time as _time
+def ask_stream(q: str, context_code: str = "", session_id: str = ""):
+    """SSE 流式问答: stage → coreference → data → token → verify → done。"""
+    import json, time as _time, uuid
     from src.query.pipeline import run as nlq_run
     from src.query.intent import classify as rule_classify
     from src.query.rule_slots import rule_extract
     from src.query.entity_link import link_slots
     from src.query.templates import get_executor
     from src.agent.verifier import verify_answer
+    from src.query.conversation import get_session
+    from src.query.coreference import resolve_with_llm_fallback
 
     def event_gen():
         t0 = _time.perf_counter()
@@ -140,14 +143,42 @@ def ask_stream(q: str, context_code: str = ""):
             intent = r["intent"]
             yield f"event: stage\ndata: {json.dumps({'stage': 'classify', 'intent': intent, 'confidence': r['confidence']}, ensure_ascii=False)}\n\n"
 
-            # 2. 槽位抽取
-            slots = rule_extract(intent, q, s.conn, context_code) or {}
-            if not slots and intent in ("Q1","Q4","Q5") and context_code:
-                slots = {"company": context_code}
+            # 1.5 指代消解(多轮)
+            sid = session_id or str(uuid.uuid4())[:8]
+            conv = get_session(sid)
+            test_slots = rule_extract(intent, q, s.conn, context_code)
+            has_entity = test_slots is not None and bool(
+                test_slots.get("company") or test_slots.get("entity") or
+                test_slots.get("entity_a") or test_slots.get("company_a"))
+            coref = resolve_with_llm_fallback(q, conv, has_entity, _llm, s.conn)
+            if coref.get("resolved"):
+                entity = coref["entity"]
+                yield f"event: coreference\ndata: {json.dumps({'resolved': True, 'target': entity.get('name',''), 'pronoun': coref.get('pronoun',''), 'source': coref.get('source','')}, ensure_ascii=False)}\n\n"
+                # 注入指代解出的实体到 slots
+                code = entity.get("stock_code", "")
+                if code and intent in ("Q1","Q4","Q5"):
+                    slots = {"company": code}
+                elif intent == "Q3" and entity.get("entity_id"):
+                    slots = {"entity": entity["entity_id"]}
+                else:
+                    slots = test_slots or {}
+            elif coref.get("clarify"):
+                yield f"event: clarify\ndata: {json.dumps({'message': coref['clarify'], 'candidates': coref.get('candidates', [])}, ensure_ascii=False)}\n\n"
+                yield f"event: done\ndata: {json.dumps({'elapsed_ms': 0}, ensure_ascii=False)}\n\n"
+                return
+            else:
+                # 2. 槽位抽取(规则)
+                slots = test_slots or {}
+                if not slots and intent in ("Q1","Q4","Q5") and context_code:
+                    slots = {"company": context_code}
+
             yield f"event: stage\ndata: {json.dumps({'stage': 'slot_fill', 'slots': {k:v for k,v in slots.items() if not k.startswith('_')}, 'source': 'rule'}, ensure_ascii=False)}\n\n"
 
-            # 3. 实体链接
-            linked = link_slots(s, intent, slots)
+            # 3. 实体链接(指代已解的跳过)
+            if slots.get("_coref"):
+                linked = {"slots": slots, "clarifications": [], "errors": []}
+            else:
+                linked = link_slots(s, intent, slots)
             yield f"event: stage\ndata: {json.dumps({'stage': 'entity_link', 'clarifications': linked['clarifications']}, ensure_ascii=False)}\n\n"
 
             # 4. 模板执行 → 推结构化结果(LLM 之前)
@@ -155,6 +186,17 @@ def ask_stream(q: str, context_code: str = ""):
                 executor = get_executor(intent)
                 result = executor(s, _eng, linked["slots"])
                 yield f"event: data\ndata: {json.dumps(result, ensure_ascii=False, default=str)}\n\n"
+
+                # 记录对话轮次(更新焦点栈)
+                result_entities = []
+                if "parties" in result:
+                    result_entities = [{"name": p.get("name",""), "stock_code": p.get("code","")} for p in result.get("parties",[])[:10]]
+                elif "results" in result:
+                    result_entities = [{"name": r2.get("short_name",""), "stock_code": r2.get("stock_code","")} for r2 in result.get("results",[])[:10]]
+                linked_entities = [{"stock_code": slots.get("company",""), "name": slots.get("_company_name","")}] if slots.get("company") else []
+                conv.record_turn(question=q, intent=intent, slots=slots,
+                                linked_entities=linked_entities,
+                                result_entities=result_entities)
 
                 # 5. LLM 流式生成回答
                 if _llm.enabled:

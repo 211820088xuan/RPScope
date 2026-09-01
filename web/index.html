@@ -355,7 +355,8 @@ async function ask(){
   const curCode=document.getElementById('code').value.trim();
 
   // SSE 流式
-  const url=`/api/ask/stream?q=${encodeURIComponent(q)}&context_code=${curCode}`;
+  const sid=(window._rpscope_sid||(window._rpscope_sid='s'+Date.now()));
+  const url=`/api/ask/stream?q=${encodeURIComponent(q)}&context_code=${curCode}&session_id=${sid}`;
   const es=new EventSource(url);
   let answerText='';
   let structuredData=null;
@@ -410,6 +411,30 @@ async function ask(){
     if(!d.passed&&draftEl){
       draftEl.style.opacity='0.5';
       draftEl.insertAdjacentHTML('beforeend','<br><span style=color:#b91c1c;font-size:11px>⚠ 回查未通过, 部分内容可能不准确</span>');
+    }
+  });
+
+  es.addEventListener('coreference',(e)=>{
+    const d=JSON.parse(e.data);
+    const note=document.createElement('div');
+    note.style.cssText='font-size:11px;color:#0f766e;margin-bottom:4px';
+    note.textContent=`${d.pronoun||'指代'} → ${d.target}`;
+    out.appendChild(note);
+  });
+
+  es.addEventListener('clarify',(e)=>{
+    const d=JSON.parse(e.data);
+    out.innerHTML=`<div style="margin:6px 0">${d.message}</div>`;
+    if(d.candidates&&d.candidates.length){
+      const ul=document.createElement('div');
+      d.candidates.forEach((c,i)=>{
+        const btn=document.createElement('button');
+        btn.textContent=`${i+1}. ${c.name||c.stock_code}`;
+        btn.style.cssText='display:block;margin:4px 0;padding:4px 10px;font-size:12px;cursor:pointer;background:var(--paper);border:1px solid var(--line);border-radius:4px';
+        btn.onclick=()=>{document.getElementById('q').value=(c.name||c.stock_code)+'的关联方';ask()};
+        ul.appendChild(btn);
+      });
+      out.appendChild(ul);
     }
   });
 

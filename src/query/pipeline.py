@@ -21,6 +21,8 @@ from src.query.templates import get_executor
 from src.query.generate import generate_and_execute
 from src.query.trace import Trace
 from src.query.rule_slots import rule_extract
+from src.query.coreference import resolve_with_llm_fallback
+from src.query.conversation import get_session, ConversationState
 from src.rules.engine import RuleEngine
 from src.store.db import Store
 from src.agent.verifier import verify_answer
@@ -29,6 +31,7 @@ from src.agent.verifier import verify_answer
 class NLQueryState(TypedDict):
     question: str
     context_code: str
+    session_id: str
     intent: str
     confidence: float
     uncertain: bool
@@ -42,8 +45,10 @@ class NLQueryState(TypedDict):
     used_llm: bool
     verify: dict
     elapsed_ms: float
+    coreference: dict
     _trace: Trace
     _t0: float
+    _conv: ConversationState
 
 
 _DEPS: dict = {}
@@ -66,9 +71,61 @@ def classify_node(state: NLQueryState) -> dict:
     trace.uncertain = r["uncertain"]
     trace.classification_source = "rule" if not r["uncertain"] else "llm_pending"
     trace.add_event("classify", {"intent": r["intent"], "confidence": r["confidence"]})
+    # 获取或创建会话状态
+    sid = state.get("session_id", "")
+    conv = get_session(sid) if sid else None
     return {"intent": r["intent"], "confidence": r["confidence"], "uncertain": r["uncertain"],
             "classification_source": "rule" if not r["uncertain"] else "llm_pending",
-            "_trace": trace, "_t0": time.perf_counter()}
+            "_trace": trace, "_t0": time.perf_counter(), "_conv": conv, "coreference": {}}
+
+
+def coreference_node(state: NLQueryState) -> dict:
+    """指代消解: 检测问句中的指代, 解析到焦点栈实体。"""
+    llm = _DEPS["llm"]
+    store = _DEPS["store"]
+    trace = state["_trace"]
+    conv = state.get("_conv")
+    q = state["question"]
+
+    if not conv:
+        return {"coreference": {"no_coreference": True}}
+
+    # 判断问句是否含显式实体(已有槽位的公司/人名)
+    # 用规则槽位抽取试一下(不调 LLM)
+    intent = state["intent"]
+    test_slots = rule_extract(intent, q, store.conn, state.get("context_code", ""))
+    has_entity = test_slots is not None and bool(
+        test_slots.get("company") or test_slots.get("entity") or
+        test_slots.get("entity_a") or test_slots.get("company_a"))
+
+    # 指代消解
+    result = resolve_with_llm_fallback(q, conv, has_entity, llm, store.conn)
+    trace.add_event("coreference", {"resolved": result.get("resolved", False),
+                                     "source": result.get("source", ""),
+                                     "has_entity": has_entity})
+
+    if result.get("resolved"):
+        # 把解析到的实体注入到槽位中(跳过后续实体链接)
+        entity = result["entity"]
+        code = entity.get("stock_code", "")
+        if code and intent in ("Q1", "Q4", "Q5"):
+            return {"coreference": result, "slots": {"company": code},
+                    "linked_slots": {"company": code, "_coref": True}}
+        elif intent == "Q3" and entity.get("entity_id"):
+            return {"coreference": result, "slots": {"entity": entity["entity_id"]},
+                    "linked_slots": {"entity": entity["entity_id"], "_coref": True}}
+        elif intent == "Q2":
+            # 指代解到一个实体, 另一个用 context_code
+            ctx = state.get("context_code", "")
+            if code and ctx:
+                return {"coreference": result,
+                        "slots": {"entity_a": code, "entity_b": ctx},
+                        "linked_slots": {"entity_a": code, "entity_b": ctx, "_coref": True}}
+
+    if result.get("clarify"):
+        return {"coreference": result}
+
+    return {"coreference": result}
 
 
 def slot_fill_node(state: NLQueryState) -> dict:
@@ -206,6 +263,28 @@ def finish_node(state: NLQueryState) -> dict:
     elapsed = (time.perf_counter() - state.get("_t0", time.perf_counter())) * 1000
     trace = state["_trace"]
     trace.save()
+    # 记录对话轮次(更新焦点栈)
+    conv = state.get("_conv")
+    if conv:
+        result = state.get("result", {})
+        result_entities = []
+        if "parties" in result:
+            result_entities = [{"name": p.get("name", ""), "stock_code": p.get("code", "")}
+                              for p in result.get("parties", [])[:10]]
+        elif "results" in result:
+            result_entities = [{"name": r.get("short_name", r.get("display_name", "")),
+                                "stock_code": r.get("stock_code", "")}
+                              for r in result.get("results", [])[:10]]
+        elif "events" in result:
+            result_entities = [{"name": e.get("counterparty", ""), "stock_code": ""}
+                              for e in result.get("events", [])[:10] if e.get("counterparty")]
+        slots = state.get("slots", {})
+        linked = [{"stock_code": slots.get("company", ""), "name": slots.get("_company_name", "")}
+                 ] if slots.get("company") else []
+        conv.record_turn(
+            question=state["question"], intent=state.get("intent", ""),
+            slots=slots, linked_entities=linked,
+            result_entities=result_entities, elapsed_ms=elapsed)
     return {"elapsed_ms": elapsed}
 
 
@@ -229,6 +308,7 @@ def route_after_classify(state: NLQueryState) -> str:
 def build_graph():
     g = StateGraph(NLQueryState)
     g.add_node("classify", classify_node)
+    g.add_node("coreference", coreference_node)
     g.add_node("slot_fill", slot_fill_node)
     g.add_node("entity_link", entity_link_node)
     g.add_node("clarify", clarify_node)
@@ -238,7 +318,8 @@ def build_graph():
     g.add_node("finish", finish_node)
 
     g.add_edge(START, "classify")
-    g.add_edge("classify", "slot_fill")
+    g.add_edge("classify", "coreference")
+    g.add_edge("coreference", "slot_fill")
     g.add_edge("slot_fill", "entity_link")
     g.add_conditional_edges("entity_link", route_after_link,
                             {"clarify": "clarify", "answer_generate": "answer_generate", "execute": "execute"})
@@ -253,7 +334,8 @@ def build_graph():
 _APP = None
 
 
-def run(store: Store, engine: RuleEngine, llm: LLMClient, question: str, context_code: str = "") -> dict:
+def run(store: Store, engine: RuleEngine, llm: LLMClient, question: str,
+        context_code: str = "", session_id: str = "") -> dict:
     global _APP
     if _APP is None:
         configure(store, engine, llm)
@@ -262,11 +344,12 @@ def run(store: Store, engine: RuleEngine, llm: LLMClient, question: str, context
         configure(store, engine, llm)
 
     out = _APP.invoke({
-        "question": question, "context_code": context_code,
+        "question": question, "context_code": context_code, "session_id": session_id,
         "intent": "", "confidence": 0.0, "uncertain": False, "classification_source": "",
         "slots": {}, "linked_slots": {}, "clarifications": [], "errors": [],
         "result": {}, "answer": "", "used_llm": False, "verify": {},
-        "elapsed_ms": 0.0, "_trace": None, "_t0": time.perf_counter(),
+        "elapsed_ms": 0.0, "coreference": {},
+        "_trace": None, "_t0": time.perf_counter(), "_conv": None,
     })
     return {
         "intent": out.get("intent", ""),
@@ -275,4 +358,5 @@ def run(store: Store, engine: RuleEngine, llm: LLMClient, question: str, context
         "verify": out.get("verify", {}),
         "elapsed_ms": out.get("elapsed_ms", 0.0),
         "clarifications": out.get("clarifications", []),
+        "coreference": out.get("coreference", {}),
     }
