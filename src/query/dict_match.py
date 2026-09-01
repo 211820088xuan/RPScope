@@ -19,13 +19,30 @@ class Match(NamedTuple):
 
 
 def _norm(s: str) -> str:
-    """归一化: 去空格, 全半角统一, 去 A/B 后缀标记。"""
+    """归一化: 去空格(含全角), 全半角统一, 去 A/B 后缀标记(全角+半角)。"""
     if not s:
         return ""
-    s = unicodedata.normalize("NFKC", s)
-    s = s.replace(" ", "").replace("\u3000", "").strip()
-    s = re.sub(r"[ＡＢＣＤ]$", "", s)
+    s = unicodedata.normalize("NFKC", s)  # 全角→半角
+    s = s.replace(" ", "").replace("\u3000", "").replace("\t", "").strip()  # 去所有空格
+    s = re.sub(r"[ABCDabcd]$", "", s)  # 去尾部 A/B/C/D (NFKC 后半角)
     return s.lower()
+
+
+# 地名前缀(用于自动派生别名)
+_PLACE_PREFIXES = ("贵州", "深圳", "宁波", "北京", "上海", "广东", "福建", "四川",
+    "重庆", "山东", "江苏", "浙江", "安徽", "湖北", "湖南", "河南", "河北", "山西",
+    "陕西", "江西", "辽宁", "吉林", "黑龙江", "云南", "广西", "甘肃", "海南",
+    "西藏", "青海", "新疆", "内蒙古", "宁夏", "天津", "南京", "杭州", "成都",
+    "广州", "武汉", "长沙", "郑州", "苏州", "无锡", "厦门", "青岛", "大连",
+    "沈阳", "长春", "哈尔滨", "昆明", "兰州", "合肥", "福州", "南昌", "太原")
+
+
+def _derive_alias(name: str) -> str | None:
+    """从 short_name 派生别名: 去地名前缀。返回 None 表示无法派生。"""
+    for prefix in _PLACE_PREFIXES:
+        if name.startswith(prefix) and len(name) > len(prefix) + 1:
+            return name[len(prefix):]
+    return None
 
 
 class CompanyMatcher:
@@ -34,6 +51,9 @@ class CompanyMatcher:
     def __init__(self, conn: sqlite3.Connection):
         self._by_name: dict[str, list[dict]] = {}  # normalized_name → [{code, name}]
         self._by_code: dict[str, dict] = {}  # code → {code, name}
+        self._aliases: dict[str, list[dict]] = {}  # alias → [{code, name}] (次级索引)
+        alias_count = 0
+        collision_count = 0
         for r in conn.execute("SELECT stock_code, short_name, full_name FROM company").fetchall():
             code = r["stock_code"]
             entry = {"code": code, "name": r["short_name"]}
@@ -45,8 +65,25 @@ class CompanyMatcher:
                 if len(n) < 2:
                     continue
                 self._by_name.setdefault(n, []).append(entry)
+            # 自动派生别名(去地名前缀)
+            sn = r["short_name"] or ""
+            alias = _derive_alias(sn)
+            if alias:
+                alias_norm = _norm(alias)
+                if alias_norm and len(alias_norm) >= 2 and alias_norm not in self._by_name:
+                    self._aliases.setdefault(alias_norm, []).append(entry)
+                    alias_count += 1
+        # 统计撞车
+        for k, v in self._aliases.items():
+            if len(v) > 1:
+                collision_count += 1
+        # 合并别名到主词典(撞车的只保留, 匹配时走澄清)
+        for alias, entries in self._aliases.items():
+            self._by_name.setdefault(alias, []).extend(entries)
         # 按 name 长度降序(最长优先匹配)
         self._sorted_names = sorted(self._by_name.keys(), key=len, reverse=True)
+        self._stats = {"alias_count": alias_count, "collision_count": collision_count,
+                       "total_names": len(self._by_name)}
 
     def match(self, text: str) -> Match | None:
         """在 text 中查找公司名, 返回最长匹配。歧义时返回 ambiguous。"""

@@ -34,6 +34,28 @@ _eng = RuleEngine("config/rules.yaml")
 _llm = LLMClient()
 _cache = QueryCache()
 
+# T8: 启动健康检查 — graph.pkl 必须存在且可加载
+def _startup_health_check():
+    import os, sys
+    graph_path = ".cache/graph.pkl"
+    if not os.path.exists(graph_path):
+        print(f"[FATAL] graph.pkl not found at {graph_path}", file=sys.stderr)
+        print(f"[HINT] Run: py scripts/rebuild_graph.py", file=sys.stderr)
+        raise SystemExit(1)
+    try:
+        import pickle
+        with open(graph_path, "rb") as f:
+            pickle.load(f)
+    except Exception as e:
+        print(f"[FATAL] graph.pkl corrupt: {e}", file=sys.stderr)
+        print(f"[HINT] Run: py scripts/rebuild_graph.py", file=sys.stderr)
+        raise SystemExit(1)
+
+_startup_health_check()
+
+# T9: 输入长度上限
+MAX_INPUT_LEN = 500
+
 WEB_DIR = Path(__file__).resolve().parent.parent.parent / "web"
 
 
@@ -68,6 +90,8 @@ def ask(body: dict):
     q = body.get("question", "")
     if not q:
         raise HTTPException(400, "question required")
+    if len(q) > MAX_INPUT_LEN:
+        raise HTTPException(400, f"输入过长({len(q)}字符), 上限{MAX_INPUT_LEN}字")
     if not body.get("nocache"):
         cached = _cache.get(q)
         if cached is not None:
@@ -124,6 +148,8 @@ def report_prose(code: str):
 @app.get("/api/ask/stream")
 def ask_stream(q: str, context_code: str = "", session_id: str = ""):
     """SSE 流式问答: stage → coreference → data → token → verify → done。"""
+    if len(q) > MAX_INPUT_LEN:
+        return JSONResponse({"error": f"输入过长({len(q)}字符), 上限{MAX_INPUT_LEN}字"}, status_code=400)
     import json, time as _time, uuid
     from src.query.pipeline import run as nlq_run
     from src.query.intent import classify as rule_classify
