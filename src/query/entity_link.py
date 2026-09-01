@@ -64,8 +64,30 @@ def link_company(store: Store, text: str) -> dict:
 
 
 def link_entity(store: Store, text: str) -> dict:
-    """把文本链接到 entity 节点(人/机构)。返回 {matched, entity_id, name, method, candidates}。"""
+    """把文本链接到 entity 节点(人/机构)。返回 {matched, entity_id, name, method, candidates}。
+    先查 company 表, 因为公司名在 entity 表可能有多个保险产品变体。"""
     text = text.strip()
+    # 0. 先查 company 表, 如果匹配到唯一公司, 用其 short_name 在 entity 表找实体
+    co = store.conn.execute(
+        "SELECT stock_code, short_name FROM company WHERE short_name=? COLLATE NOCASE", (text,)).fetchall()
+    if len(co) == 1:
+        cname = co[0]["short_name"]
+        # 精确匹配
+        rows = store.conn.execute(
+            "SELECT entity_id, display_name, entity_type FROM entity "
+            "WHERE display_name=? COLLATE NOCASE AND is_channel=0", (cname,)).fetchall()
+        if len(rows) >= 1:
+            return {"matched": True, "entity_id": rows[0]["entity_id"], "name": rows[0]["display_name"],
+                    "type": rows[0]["entity_type"], "method": "company_name->entity", "candidates": []}
+        # 模糊匹配 + 选 holding 记录最多的实体(最可能是主体)
+        rows = store.conn.execute(
+            "SELECT e.entity_id, e.display_name, e.entity_type, "
+            "(SELECT COUNT(*) FROM holding h WHERE h.entity_id=e.entity_id) AS hold_count "
+            "FROM entity e WHERE e.display_name LIKE ? AND e.is_channel=0 "
+            "ORDER BY hold_count DESC LIMIT 1", (f"{cname}%",)).fetchone()
+        if rows and rows["hold_count"] > 0:
+            return {"matched": True, "entity_id": rows["entity_id"], "name": rows["display_name"],
+                    "type": rows["entity_type"], "method": "company_fuzzy+hold_count", "candidates": []}
     # 精确匹配 display_name
     rows = store.conn.execute(
         "SELECT entity_id, display_name, entity_type, canonical_name FROM entity "
