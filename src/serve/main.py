@@ -228,8 +228,13 @@ def ask_stream(q: str, context_code: str = "", session_id: str = ""):
                                 linked_entities=linked_entities,
                                 result_entities=result_entities)
 
-                # 5. LLM 流式生成回答
-                if _llm.enabled:
+                # 5. LLM 流式生成回答 (Q4/Q5 用模板跳过 LLM)
+                from src.query.template_answer import can_template, format_result
+                if can_template(intent):
+                    template_answer = format_result(intent, result)
+                    yield f"event: token\ndata: {json.dumps({'text': template_answer}, ensure_ascii=False)}\n\n"
+                    yield f"event: verify\ndata: {json.dumps({'passed': True}, ensure_ascii=False)}\n\n"
+                elif _llm.enabled:
                     yield f"event: stage\ndata: {json.dumps({'stage': 'generate'}, ensure_ascii=False)}\n\n"
                     ctx = json.dumps(result, ensure_ascii=False, default=str)[:3000]
                     code = linked["slots"].get("company", context_code)

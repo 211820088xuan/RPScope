@@ -34,7 +34,7 @@ _GENERIC = {
 
 # 数值/日期/计数正则
 _PCT = re.compile(r"(\d+(?:\.\d+)?)\s*%")
-_AMOUNT = re.compile(r"(\d[\d,.]*)\s*(万元|亿元|元|万|亿)")
+_AMOUNT = re.compile(r"(\d[\d,.]*)\s*(万亿元|万元|亿元|元|万亿|万|亿)")
 _DATE = re.compile(r"(\d{4})[-/年](\d{1,2})[-/月]?(\d{0,2})日?")
 _COUNT = re.compile(r"(\d+)\s*(?:家|条|个|项|笔|起)")
 
@@ -110,22 +110,41 @@ def extract_values_from_result(result: dict) -> dict:
         for c in result.get("controllers", {}).get(key, []):
             if isinstance(c, dict) and c.get("control_ratio") is not None:
                 pcts.append(float(c["control_ratio"]))
-    # Q4 holders
+    # Q4 holders (flat list)
     for h in result.get("holders", []):
         if isinstance(h, dict) and h.get("ratio") is not None:
             pcts.append(float(h["ratio"]))
+    # Q4 controllers (flat list)
+    for c in result.get("controllers", []):
+        if isinstance(c, dict) and c.get("control_ratio") is not None:
+            pcts.append(float(c["control_ratio"]))
+    # Q4 roles (nested)
+    roles = result.get("roles", {})
+    if isinstance(roles, dict):
+        for h in roles.get("holders", []):
+            if isinstance(h, dict) and h.get("ratio") is not None:
+                pcts.append(float(h["ratio"]))
+        for c in roles.get("controllers", []):
+            if isinstance(c, dict) and c.get("control_ratio") is not None:
+                pcts.append(float(c["control_ratio"]))
     # Q8 basic market_cap
     for key in ("a", "b"):
         co = result.get("basic", {}).get(key, {})
         if isinstance(co, dict) and co.get("market_cap") is not None:
             pcts.append(float(co["market_cap"]))
     # events amount
-    for key in ("a", "b"):
-        ev = result.get("events", {}).get(key, {})
-        if isinstance(ev, dict):
-            for et, info in ev.items():
-                if isinstance(info, dict) and info.get("total_amount"):
-                    amounts.append((str(info["total_amount"]), "元"))
+    events_obj = result.get("events", {})
+    if isinstance(events_obj, dict):
+        for key in ("a", "b"):
+            ev = events_obj.get(key, {})
+            if isinstance(ev, dict):
+                for et, info in ev.items():
+                    if isinstance(info, dict) and info.get("total_amount"):
+                        amounts.append((str(info["total_amount"]), "元"))
+    elif isinstance(events_obj, list):
+        for e in events_obj:
+            if isinstance(e, dict) and e.get("amount") is not None:
+                amounts.append((str(e["amount"]), "元"))
 
     # 计数: 列表长度 + 结构化结果中的 count 字段
     counts = []
@@ -157,13 +176,12 @@ def extract_values_from_result(result: dict) -> dict:
                 for et, info in ev.items():
                     if isinstance(info, dict):
                         counts.append(info.get("count", 0))
-    if isinstance(events, list):
+    elif isinstance(events, list):
         counts.append(len(events))
 
-    # 也从 JSON 中提取所有原始数字(作为金额/计数的候选)
+    # 也从 JSON 中提取所有原始数字(只作为计数候选, 不作为金额——避免ID/索引误匹配)
     all_nums = re.findall(r"\d+(?:\.\d+)?", text)
     for num in all_nums:
-        amounts.append((num, ""))  # 无单位的数字也作为候选
         counts.append(int(float(num)) if "." not in num else int(float(num)))
 
     return {"percentages": pcts, "amounts": amounts, "dates": dates, "counts": counts}
