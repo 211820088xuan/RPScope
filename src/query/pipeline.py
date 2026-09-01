@@ -20,6 +20,7 @@ from src.query.entity_link import link_slots
 from src.query.templates import get_executor
 from src.query.generate import generate_and_execute
 from src.query.trace import Trace
+from src.query.rule_slots import rule_extract
 from src.rules.engine import RuleEngine
 from src.store.db import Store
 from src.agent.verifier import verify_answer
@@ -83,21 +84,29 @@ def slot_fill_node(state: NLQueryState) -> dict:
         trace.intent = intent
         trace.classification_source = "llm"
         trace.add_llm_call("classify_and_extract", (time.perf_counter() - state["_t0"]) * 1000)
+        slots = r.get("slots", {})
+        trace.slots = slots
+        trace.add_event("slot_fill", {"slots": slots, "source": "llm"})
     else:
-        # 确定: 只抽槽位
-        r = extract_slots(q, intent, llm)
-        trace.add_llm_call("extract_slots", (time.perf_counter() - state["_t0"]) * 1000)
+        # 确定: 先规则抽取, 失败才调 LLM
+        r = rule_extract(intent, q, state.get("context_code", ""))
+        if r:
+            slots = r
+            trace.add_event("slot_fill", {"slots": slots, "source": "rule"})
+        else:
+            # LLM 兜底
+            r = extract_slots(q, intent, llm)
+            trace.add_llm_call("extract_slots", (time.perf_counter() - state["_t0"]) * 1000)
+            slots = r.get("slots", {})
+            trace.add_event("slot_fill", {"slots": slots, "source": "llm_fallback"})
 
-    slots = r.get("slots", {})
-    # 如果 intent 是 Q4 且有 context_code 但 slots 里没有 company, 用 context_code
+    # 如果 intent 是 Q4/Q5 且有 context_code 但 slots 里没有 company, 用 context_code
     if intent in ("Q1", "Q4", "Q5") and "company" not in slots and state.get("context_code"):
         slots["company"] = state["context_code"]
-    # Q2 如果只有一个 entity 且有 context_code, 补上
     if intent == "Q2" and "entity_b" not in slots and state.get("context_code"):
         slots.setdefault("entity_b", state["context_code"])
 
     trace.slots = slots
-    trace.add_event("slot_fill", {"slots": slots, "source": r.get("source", "llm")})
     return {"intent": intent, "slots": slots}
 
 
