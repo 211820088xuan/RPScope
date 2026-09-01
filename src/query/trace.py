@@ -78,7 +78,7 @@ class Trace:
                           for c in self.llm_calls],
             "slots": {k: v for k, v in self.slots.items() if not k.startswith("_")},
             "coreference_resolved": self._coref_entity,  # 补埋点: 指代消解结果
-            "entity_links": [{"slot": k, "method": v} for k, v in self.entity_links.items() if k.startswith("_")],
+            "entity_links": [e for e in self.entity_links if isinstance(e, dict)],
             "template_id": self.template_id,
             "query_params": self.query_params,
             "generated_query": _redact(self.generated_query) if self.generated_query else None,
