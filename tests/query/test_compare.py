@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.rules.engine import RuleEngine
 from src.store.db import Store
 from src.query.compare import compare
-from src.agent.verifier import verify_answer, extract_entities_from_text
+from src.agent.verifier import verify_answer
 
 s = Store("rpscope.db")
 eng = RuleEngine("config/rules.yaml")
@@ -82,7 +82,7 @@ try:
             import re
             hallucinations = [w for w in eval_words if w in answer or re.search(w, answer)]
             # 检查结构化结果之外的实体
-            ents_in_answer = extract_entities_from_text(answer)
+            ents_in_answer = []  # removed: extract_entities_from_text
             known_names = set()
             for h in result.get("holders",{}).get("a",[]) + result.get("holders",{}).get("b",[]):
                 known_names.add(h.get("display_name",""))

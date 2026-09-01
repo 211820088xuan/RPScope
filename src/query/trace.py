@@ -49,9 +49,9 @@ class Trace:
         self.query_elapsed_ms: float = 0.0
         self.generated_query: str | None = None
         self.validation: dict | None = None
-    self.answer: str = ""
-    self.verify_result: dict | None = None
-    self._coref_entity: dict | None = None  # 补埋点: 指代消解的目标实体
+        self.answer: str = ""
+        self.verify_result: dict | None = None
+        self._coref_entity: dict | None = None  # 补埋点: 指代消解的目标实体
 
     def add_event(self, node: str, data: dict):
         self.events.append({"node": node, "elapsed_ms": round((time.perf_counter() - self.t0) * 1000, 1), **data})
