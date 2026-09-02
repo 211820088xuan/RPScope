@@ -6,22 +6,21 @@ from __future__ import annotations
 
 from src.disambiguate.signals import Record
 from src.llm.client import LLMClient
+from src.llm.prompts import get_prompt
 
 
 def llm_judge(name: str, rec_a: Record, rec_b: Record, client: LLMClient) -> tuple[bool, float, str]:
     """返回 (same_person, confidence, reason)。失败降级为不同人。"""
-    prompt = (
-        "你是实体消歧助手。判断两条董监高/持股变动记录是否为同一自然人。\n"
-        "中国人名重名率极高; 同名不等于同人。依据公司行业、时段、职务综合判断。\n"
-        "客观判断, 不预设倾向: 证据指向同人就判同, 证据指向不同人就判不同, 仅在真无任何线索时才判不同。\n\n"
-        f"姓名: {name}\n"
-        f"记录A: 公司{rec_a.stock_code}, 职务={rec_a.title}, 日期={rec_a.valid_from}, 来源={rec_a.source}\n"
-        f"记录B: 公司{rec_b.stock_code}, 职务={rec_b.title}, 日期={rec_b.valid_from}, 来源={rec_b.source}\n\n"
-        "输出 JSON: {\"same_person\": bool, \"confidence\": 0..1, \"reason\": \"...\"}"
+    messages = get_prompt("disambig",
+        name=name,
+        rec_a_stock_code=rec_a.stock_code, rec_a_title=rec_a.title,
+        rec_a_valid_from=rec_a.valid_from, rec_a_source=rec_a.source,
+        rec_b_stock_code=rec_b.stock_code, rec_b_title=rec_b.title,
+        rec_b_valid_from=rec_b.valid_from, rec_b_source=rec_b.source,
     )
     try:
         obj = client.chat_json(
-            [{"role": "user", "content": prompt}],
+            messages,
             schema_keys=["same_person", "confidence", "reason"],
         )
         same = bool(obj.get("same_person", False))

@@ -57,11 +57,13 @@ class Trace:
         self.events.append({"node": node, "elapsed_ms": round((time.perf_counter() - self.t0) * 1000, 1), **data})
 
     def add_llm_call(self, purpose: str, elapsed_ms: float, tokens: int = 0, retried: bool = False,
-                     output_summary: str = "", error_type: str = ""):
+                     output_summary: str = "", error_type: str = "", prompt_name: str = "", prompt_version: str = ""):
         self.llm_calls.append({"purpose": purpose, "elapsed_ms": round(elapsed_ms, 1),
                                "tokens": tokens, "retried": retried,
-                               "output_summary": output_summary[:200],  # 结构化输出摘要, 不含完整prompt
-                               "error_type": error_type})
+                               "output_summary": output_summary[:200],
+                               "error_type": error_type,
+                               "prompt_name": prompt_name,
+                               "prompt_version": prompt_version})
 
     def save(self) -> str:
         qid = hashlib.md5(f"{self.question}{time.time()}".encode()).hexdigest()[:8]

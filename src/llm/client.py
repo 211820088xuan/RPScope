@@ -123,7 +123,8 @@ class LLMClient:
         except Exception:
             # 降级: 关 json_mode, 改用 prompt 指令
             _metrics["fallbacks"] += 1
-            raw = self._raw_chat(messages + [{"role": "system", "content": "只输出 JSON，不要任何解释。"}],
+            from src.llm.prompts import get_prompt
+            raw = self._raw_chat(messages + [{"role": "system", "content": get_prompt("json_repair")[0]["content"]}],
                                  temperature, json_mode=False)
         text = _strip_fence(raw)
         try:
@@ -135,9 +136,10 @@ class LLMClient:
             missing = [k for k in schema_keys if k not in obj]
             if missing:
                 _metrics["json_repairs"] += 1
+                from src.llm.prompts import get_prompt
                 fix = self._raw_chat(
                     messages + [{"role": "user",
-                                 "content": f"上次输出缺字段 {missing}，请补全后只输出完整 JSON。"}],
+                                 "content": get_prompt("schema_repair", missing=missing)[0]["content"]}],
                     temperature, json_mode=True)
                 obj = json.loads(_strip_fence(fix))
         return obj

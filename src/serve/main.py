@@ -93,7 +93,7 @@ def ask(body: dict):
     if len(q) > MAX_INPUT_LEN:
         raise HTTPException(400, f"输入过长({len(q)}字符), 上限{MAX_INPUT_LEN}字")
     if not body.get("nocache"):
-        cached = _cache.get(q)
+        cached = _cache.get(q, body.get("context_code", ""))
         if cached is not None:
             cached["cache_hit"] = True
             return dict(cached)
@@ -106,7 +106,7 @@ def ask(body: dict):
            "verify": r["verify"], "elapsed_ms": r["elapsed_ms"], "cache_hit": False,
            "clarifications": r.get("clarifications", []),
            "coreference": r.get("coreference", {})}
-    _cache.set(q, out)
+    _cache.set(q, out, body.get("context_code", ""))
     return out
 
 
@@ -240,10 +240,8 @@ def ask_stream(q: str, context_code: str = "", session_id: str = ""):
                     code = linked["slots"].get("company", context_code)
                     try:
                         full_answer = ""
-                        for token in _llm.chat_stream([
-                            {"role": "system", "content": f"你是关联方分析助手。用户正在查看股票 {code}。基于结构化查询结果回答, 用中文。财务和行业分析可以基于你的知识。不要加免责声明。"},
-                            {"role": "user", "content": f"问题: {q}\n\n查询结果:\n{ctx}"},
-                        ]):
+                        from src.llm.prompts import get_prompt
+                        for token in _llm.chat_stream(get_prompt("sse_answer", code=code, question=q, ctx=ctx)):
                             full_answer += token
                             yield f"event: token\ndata: {json.dumps({'text': token}, ensure_ascii=False)}\n\n"
 

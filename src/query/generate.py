@@ -6,6 +6,7 @@ LLM 生成 SQL 查询, 经三道校验后执行。
 from __future__ import annotations
 import re, time
 from src.llm.client import LLMClient
+from src.llm.prompts import get_prompt
 from src.store.db import Store
 
 # 图/DB schema 白名单 (供 LLM 参考并做结构校验)
@@ -81,25 +82,22 @@ def _validate_resource(sql: str) -> tuple[bool, str]:
 def generate_and_execute(store: Store, llm: LLMClient, question: str, trace=None) -> dict:
     """模板外查询: LLM 生成 SQL → 三道校验 → 执行。"""
     import time as _time
-    prompt = (
-        f"你是 SQL 生成器。根据用户问题生成只读 SQL 查询(SQLite 语法)。\n\n"
-        f"数据库 schema:\n{_SCHEMA_DESC}\n\n"
-        f"约束:\n"
-        f"1. 只用 SELECT 语句\n"
-        f"2. 必须有 LIMIT 子句, 不超过 200\n"
-        f"3. 只能查以下表: {', '.join(_ALLOWED_TABLES)}\n"
-        f"4. 不要用子查询嵌套超过2层\n\n"
-        f"用户问题: {question}\n\n"
-        f"只输出 SQL, 不要任何解释。"
-    )
+    retry_note = ""
     for attempt in range(3):
         t0 = _time.perf_counter()
         try:
-            sql = llm.chat([{"role": "system", "content": "你是 SQL 生成器, 只输出 SQL 语句。"},
-                            {"role": "user", "content": prompt}])
+            messages = get_prompt("sql_generate",
+                schema=_SCHEMA_DESC,
+                allowed_tables=", ".join(_ALLOWED_TABLES),
+                question=question + (f"\n\n上次校验失败: {retry_note}, 请修正后重新生成。" if retry_note else ""),
+            )
+            sql = llm.chat(messages)
             elapsed = (_time.perf_counter() - t0) * 1000
             if trace:
-                trace.add_llm_call("generate_query", elapsed, retried=attempt > 0)
+                from src.llm.prompts import get_prompt_name_version
+                pv = get_prompt_name_version("sql_generate")
+                trace.add_llm_call("generate_query", elapsed, retried=attempt > 0,
+                                   prompt_name="sql_generate", prompt_version=pv)
             # 清理 markdown 围栏
             sql = sql.strip().strip("`").strip()
             if sql.startswith("sql"):
@@ -114,7 +112,7 @@ def generate_and_execute(store: Store, llm: LLMClient, question: str, trace=None
                     if trace:
                         trace.validation = {"attempt": attempt + 1, "checks": checks, "sql": sql}
                     if attempt < 2:
-                        prompt += f"\n\n上次校验失败: {msg}, 请修正后重新生成。"
+                        retry_note = msg
                         continue
                     return {"source": "generated_query", "error": f"校验失败: {msg}",
                             "validation": checks, "sql": sql, "attempts": attempt + 1}
@@ -128,7 +126,7 @@ def generate_and_execute(store: Store, llm: LLMClient, question: str, trace=None
                     "n": len(results), "validation": checks, "attempts": attempt + 1}
         except Exception as e:
             if attempt < 2:
-                prompt += f"\n\n上次出错: {e}, 请修正。"
+                retry_note = str(e)
                 continue
             return {"source": "generated_query", "error": str(e), "attempts": attempt + 1}
 

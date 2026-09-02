@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 
 from src.llm.client import LLMClient
+from src.llm.prompts import get_prompt
 from src.normalize.name import normalize_name
 
 EVENT_TYPES = {"related_txn", "investment", "penalty", "guarantee", "lawsuit", "other"}
@@ -20,15 +21,9 @@ def extract_events(text: str, client: LLMClient, source_url: str = "",
     if not text.strip() or not client.enabled:
         return []
     full = text[:6000]
-    prompt = (
-        "从下面上市公司公告文本里, 抽取事件(关联交易/对外投资/处罚/担保/诉讼等)。\n"
-        "只抽明确出现的事件, 不要臆造, 数字/日期/对手方必须来自原文。\n"
-        '输出 JSON: {"events":[{"event_type":"related_txn|investment|penalty|guarantee|lawsuit|other",'
-        '"counterparty":"对手方名称","amount":数字或null,"summary":"一句话描述","event_date":"YYYY-MM-DD或空"}]}\n\n'
-        f"公告文本:\n{full}"
-    )
+    messages = get_prompt("event_extract", text=full)
     try:
-        obj = client.chat_json([{"role": "user", "content": prompt}], schema_keys=["events"])
+        obj = client.chat_json(messages, schema_keys=["events"])
         raw = obj.get("events", [])
     except Exception:
         return []

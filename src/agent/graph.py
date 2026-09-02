@@ -120,10 +120,8 @@ def open_node(state: AgentState) -> dict:
     if llm.enabled:
         used = True
         try:
-            answer = llm.chat([
-                {"role": "system", "content": f"你是关联方与风险分析助手。用户正在查看股票 {code}，以下是系统从公开数据中提取的结构化数据。你可以结合这些数据、你的行业知识和财务知识回答用户问题。涉及具体公司名/持股比例/事件时，以结构化数据为准。财务数据、行业分析可以基于你的知识。不要在回答末尾加免责声明。"},
-                {"role": "user", "content": f"问题: {state['question']}\n\n结构化数据:\n{ctx}\n\n请用中文回答。"},
-            ])
+            from src.llm.prompts import get_prompt
+            answer = llm.chat(get_prompt("open_qa", code=code, question=state['question'], ctx=ctx))
         except Exception as e:
             used = False
             answer = f"[LLM 失败, 退回结构化] {ctx}\n\n(LLM错误: {e})"

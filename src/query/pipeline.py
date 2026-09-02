@@ -14,6 +14,7 @@ from typing import TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from src.llm.client import LLMClient
+from src.llm.prompts import get_prompt
 from src.query.intent import classify as rule_classify
 from src.query.slot_filling import extract_slots, classify_and_extract
 from src.query.entity_link import link_slots
@@ -251,10 +252,8 @@ def answer_generate_node(state: NLQueryState) -> dict:
     else:
         try:
             code = state.get("linked_slots", {}).get("company", state.get("context_code", ""))
-            answer = llm.chat([
-                {"role": "system", "content": f"你是关联方分析助手。用户正在查看股票 {code}。基于以下结构化查询结果回答用户问题, 用中文。财务和行业分析可以基于你的知识。不要加免责声明。"},
-                {"role": "user", "content": f"问题: {q}\n\n查询结果:\n{ctx}"},
-            ])
+            messages = get_prompt("answer_generate", code=code, question=q, ctx=ctx)
+            answer = llm.chat(messages)
         except Exception as e:
             answer = f"[LLM 失败] {ctx}\n\n(LLM错误: {e})"
 

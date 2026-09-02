@@ -6,6 +6,8 @@ from src.rules.engine import RuleEngine
 from src.store.db import Store
 from src.query.compare import compare
 from src.agent.verifier import verify_answer
+from src.llm.prompts import get_prompt
+from src.llm.client import LLMClient
 
 s = Store("rpscope.db")
 eng = RuleEngine("config/rules.yaml")
@@ -73,10 +75,7 @@ try:
         for a, b, note in [("002594","300750","跨行业"), ("600519","000858","同行业"), ("601318","600036","金融")]:
             result = compare(s, eng, a, b)
             ctx = json.dumps(result, ensure_ascii=False, default=str)[:3000]
-            answer = llm.chat([
-                {"role": "system", "content": "你是关联方分析助手。基于结构化对比结果写一份简短摘要, 用中文。只陈述数据, 不做评价性判断(如更好/更差/更稳健/风险更高)。不要加免责声明。"},
-                {"role": "user", "content": f"对比 {a} 和 {b}:\n{ctx}"},
-            ])
+            answer = llm.chat(get_prompt("compare_summary", a=a, b=b, ctx=ctx))
             # 检查幻觉
             eval_words = ["更稳健", "风险更高", "更差", "更好", "更优", "更安全", "比.*更", "因为.*所以"]
             import re

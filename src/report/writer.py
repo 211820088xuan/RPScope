@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from src.llm.client import LLMClient
+from src.llm.prompts import get_prompt
 from src.normalize.name import normalize_name
 
 
@@ -16,11 +17,8 @@ def write_prose(dossier: dict, llm: LLMClient | None = None, use_llm: bool = Fal
         return template
     # LLM 撰写(带断言回查)
     try:
-        ans = llm.chat([
-            {"role": "system", "content": "你是关联方底稿撰写员。基于给定的结构化数据写一份全面的关联方与风险底稿。内容包括：一、公司概况（行业、主营业务、行业地位）；二、股权结构分析（控制权分布、实控人背景）；三、财务与估值概况（营收规模、盈利能力、PE/PB估值水平，基于你对这家公司的了解）；四、关联方清单分析（已验证/系统发现待核查/年报未验证各自的含义和数量）；五、风险事件分析（担保/诉讼/质押的风险提示）；六、口径与限制。只基于给定的结构化数据中的具体公司名/持股比例/事件, 但财务和行业分析可以基于你的知识。不要加免责声明。"},
-            {"role": "user", "content": f"基于以下结构化数据写一份关联方与风险底稿(中文, markdown格式):\n{template}"},
-        ], temperature=0.3)
-        return ans
+        messages = get_prompt("report_writer", template=template)
+        ans = llm.chat(messages, temperature=0.3)
         return ans
     except Exception as e:
         return template + f"\n\n[LLM 失败, 退回模板: {e}]"

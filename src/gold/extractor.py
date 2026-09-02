@@ -84,14 +84,10 @@ def extract(pdf_path: str | Path, pages: list[int], client: LLMClient | None = N
 
     # 2. LLM 主力(不论文本/表格, 全文抽具体名 + 断言回查), 覆盖表格只抓到类别的情况
     if use_llm and client and client.enabled and full.strip():
-        prompt = (
-            "从下面上市公司年报关联方章节文本里, 抽取所有被披露的关联方的具体名称(法人全称/自然人姓名/机构全称)。\n"
-            "只要具体名称, 不要类别词(合营企业/联营企业/子公司等), 不要本公司自己, 不要臆造。\n"
-            '输出 JSON: {"parties":[{"name":"关联方具体全称","relation":"关系(如母公司/合营/联营/同控制)"}]}\n\n'
-            f"章节文本:\n{full}"
-        )
+        from src.llm.prompts import get_prompt
+        messages = get_prompt("gold_extract", text=full)
         try:
-            obj = client.chat_json([{"role": "user", "content": prompt}], schema_keys=["parties"])
+            obj = client.chat_json(messages, schema_keys=["parties"])
             raw = obj.get("parties", [])
         except Exception:
             raw = []

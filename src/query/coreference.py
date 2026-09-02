@@ -14,6 +14,7 @@ import re, yaml
 from pathlib import Path
 from src.query.conversation import ConversationState, FocusEntity
 from src.normalize.name import normalize_name
+from src.llm.prompts import get_prompt
 
 _CFG_PATH = Path(__file__).resolve().parent.parent.parent / "config" / "coreference_keywords.yaml"
 _CFG: dict | None = None
@@ -189,10 +190,7 @@ def resolve_with_llm_fallback(question: str, state: ConversationState,
     if last_results:
         ctx += f"上一轮结果: {json.dumps([r.get('name','') for r in last_results[:5]], ensure_ascii=False)}"
     try:
-        ans = llm.chat_json([
-            {"role": "system", "content": "你是指代消解器。根据对话上下文判断问句中的指代目标。只输出JSON: {\"entity_name\": \"目标名称\"} 或 {\"result_index\": 数字}。不确定就输出 {\"uncertain\": true}。"},
-            {"role": "user", "content": f"对话上下文:\n{ctx}\n\n问句: {question}\n\n输出JSON:"},
-        ])
+        ans = llm.chat_json(get_prompt("coreference", ctx=ctx, question=question))
         if ans.get("uncertain"):
             return {"resolved": False, "clarify": "无法确定指代目标, 请明确指出您想查询哪家公司。",
                     "candidates": []}

@@ -1,0 +1,17 @@
+# Prompt 版本配置 — 整体切换版本做对比时改这里
+# 每个名称映射到 config/prompts/ 下的文件名(不含扩展名)
+
+disambig: disambig_v1
+event_extract: event_extract_v1
+report_writer: report_writer_v1
+gold_extract: gold_extract_v1
+sql_generate: sql_generate_v1
+answer_generate: answer_generate_v1
+coreference: coreference_v1
+slot_filling: slot_filling_v1
+intent_classify: intent_classify_v1
+open_qa: open_qa_v1
+sse_answer: sse_answer_v1
+json_repair: json_repair_v1
+schema_repair: schema_repair_v1
+compare_summary: compare_summary_v1
