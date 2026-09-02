@@ -62,6 +62,7 @@ class LLMClient:
         self.enabled = ENABLED and bool(API_KEY) and bool(BASE_URL)
         self.client = OpenAI(api_key=API_KEY, base_url=BASE_URL, timeout=90.0) if self.enabled else None
         self.model = model or MODEL
+        self.last_usage: dict = {}  # 最近一次调用的 usage
 
     @retry(
         retry=retry_if_not_exception_type(_CONTENT_ERRORS),
@@ -78,21 +79,34 @@ class LLMClient:
         _metrics["calls"] += 1
         try:
             u = resp.usage
-            _metrics["prompt_tokens"] += getattr(u, "prompt_tokens", 0) or 0
-            _metrics["completion_tokens"] += getattr(u, "completion_tokens", 0) or 0
+            pt = getattr(u, "prompt_tokens", 0) or 0
+            ct = getattr(u, "completion_tokens", 0) or 0
+            _metrics["prompt_tokens"] += pt
+            _metrics["completion_tokens"] += ct
+            self.last_usage = {"prompt_tokens": pt, "completion_tokens": ct, "total_tokens": pt + ct}
         except Exception:
-            pass
+            self.last_usage = {}
         return resp.choices[0].message.content or ""
 
     def chat_stream(self, messages: list[dict], temperature: float = 0.0):
-        """流式 chat, yield token chunks。"""
+        """流式 chat, yield token chunks。最后存储 usage 到 self.last_usage。"""
         if not self.enabled:
             raise RuntimeError("LLM disabled")
         resp = self.client.chat.completions.create(
-            model=self.model, messages=messages, temperature=temperature, stream=True)
+            model=self.model, messages=messages, temperature=temperature,
+            stream=True, stream_options={"include_usage": True})
+        _metrics["calls"] += 1
+        usage_captured = None
         for chunk in resp:
+            if chunk.usage:
+                pt = getattr(chunk.usage, "prompt_tokens", 0) or 0
+                ct = getattr(chunk.usage, "completion_tokens", 0) or 0
+                _metrics["prompt_tokens"] += pt
+                _metrics["completion_tokens"] += ct
+                usage_captured = {"prompt_tokens": pt, "completion_tokens": ct, "total_tokens": pt + ct}
             if chunk.choices and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
+        self.last_usage = usage_captured or {}
 
     def chat(self, messages: list[dict], temperature: float = 0.0) -> str:
         if not self.enabled:
@@ -106,12 +120,6 @@ class LLMClient:
             raise
         finally:
             _metrics.setdefault("last_elapsed_s", round(time.perf_counter() - t0, 3))
-            try:
-                from src.serve.observability import log_llm_call
-                log_llm_call(str(messages), time.perf_counter() - t0,
-                             _metrics["prompt_tokens"] + _metrics["completion_tokens"])
-            except Exception:
-                pass
 
     def chat_json(self, messages: list[dict], schema_keys: list[str] | None = None,
                   temperature: float = 0.0) -> dict:

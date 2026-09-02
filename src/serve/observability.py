@@ -1,6 +1,9 @@
-"""P10 自建链路追踪 - 每步耗时 + LLM 调用日志(prompt hash/耗时/token/缓存命中)。
+"""已废弃 — 使用 src/query/trace.py 替代。
 
-不依赖 Langfuse(需装+key), 自建轻量 trace; 接入 LLMClient + agent。
+此模块是早期轻量 trace, 仅被 LLMClient.chat() 调用(非 chat_stream/chat_json)。
+trace.py 提供完整的 per-query 文件持久化 trace + 脱敏 + API 端点, 已完全覆盖此模块功能。
+
+保留仅为向后兼容, 不再维护。新代码不应 import 此模块。
 """
 from __future__ import annotations
 
@@ -19,7 +22,7 @@ class Span:
 
 
 def trace(name: str):
-    """装饰器: 记录函数耗时。"""
+    """装饰器: 记录函数耗时。已废弃, 请使用 src/query/trace.py。"""
     def deco(fn):
         def wrap(*a, **kw):
             t0 = time.perf_counter()
@@ -31,6 +34,7 @@ def trace(name: str):
 
 
 def log_llm_call(prompt: str, elapsed: float, tokens: int, cached: bool = False) -> None:
+    """已废弃, 请使用 Trace.add_llm_call()。"""
     ph = hashlib.sha1(prompt.encode()).hexdigest()[:10]
     _traces.append({"name": "llm", "elapsed_ms": elapsed * 1000,
                     "prompt_hash": ph, "tokens": tokens, "cached": cached})

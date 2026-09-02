@@ -1,13 +1,27 @@
-"""P10 语义缓存 - 归一化问题 + 结果缓存, 带命中率统计。
+"""P10 结构化结果缓存 — key 含 intent+slots+graph_mtime, 自动失效。
 
-简化版(无 embedding): 问题归一化(去空格/小写/代码补齐)作 key; 同 key 命中。
-生产可换 embedding 相似度阈值, 此处结构就绪。
+只缓存结构化查询结果(确定性), 不缓存 LLM 生成内容。
+图文件 mtime 变化时所有旧 key 自动失效。
 """
 from __future__ import annotations
 
+import json
+import os
 import re
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
+
+
+_GRAPH_PATH = Path(".cache/graph.pkl")
+
+
+def _graph_mtime() -> float:
+    """获取 graph.pkl 的 mtime, 用于自动失效。"""
+    try:
+        return _GRAPH_PATH.stat().st_mtime
+    except Exception:
+        return 0.0
 
 
 @dataclass
@@ -28,13 +42,20 @@ class QueryCache:
         self.stats = CacheStats()
 
     @staticmethod
-    def _key(question: str, context_code: str = "") -> str:
-        # 归一化: 去多余空白, 小写; 含 context_code 避免多轮误命中
-        q = re.sub(r"\s+", "", question).lower()
-        return f"{q}|{context_code}"
+    def _key(intent: str, slots: dict, context_code: str = "") -> str:
+        """key = intent + resolved_slots + context_code + graph_mtime。
 
-    def get(self, question: str, context_code: str = "") -> dict | None:
-        k = self._key(question, context_code)
+        slots 是指代消解后的(含 entity_id/stock_code, 不是原始问句)。
+        graph_mtime 变化 → 所有旧 key 自动失效。
+        """
+        # 过滤掉 _ 开头的内部字段, 只保留实际槽位
+        clean_slots = {k: v for k, v in slots.items() if not k.startswith("_")}
+        slots_json = json.dumps(clean_slots, sort_keys=True, ensure_ascii=False)
+        gm = _graph_mtime()
+        return f"{intent}|{slots_json}|{context_code}|{gm}"
+
+    def get(self, intent: str, slots: dict, context_code: str = "") -> dict | None:
+        k = self._key(intent, slots, context_code)
         now = time.time()
         if k in self._store:
             ts, val = self._store[k]
@@ -45,12 +66,12 @@ class QueryCache:
         self.stats.misses += 1
         return None
 
-    def set(self, question: str, value: dict, context_code: str = "") -> None:
-        self._store[self._key(question, context_code)] = (time.time(), value)
+    def set(self, intent: str, slots: dict, value: dict, context_code: str = "") -> None:
+        self._store[self._key(intent, slots, context_code)] = (time.time(), value)
         self.stats.size = len(self._store)
 
     def clear(self) -> None:
-        """数据重建后主动清缓存。"""
+        """数据重建后主动清缓存(graph mtime 变化已自动失效, 此为兜底)。"""
         self._store.clear()
         self.stats.size = 0
 

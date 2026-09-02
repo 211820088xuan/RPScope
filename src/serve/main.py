@@ -112,7 +112,8 @@ def ask(body: dict):
 
 @app.get("/api/stats")
 def stats():
-    return {"cache": _cache.snapshot(), "traces": trace_snapshot()}
+    from src.llm.client import metrics as llm_metrics
+    return {"cache": _cache.snapshot(), "traces": trace_snapshot(), "llm": llm_metrics()}
 
 
 @app.get("/api/report/{code}/pdf")
@@ -209,12 +210,24 @@ def ask_stream(q: str, context_code: str = "", session_id: str = ""):
 
             # 4. 模板执行 → 推结构化结果(LLM 之前)
             if intent not in ("Q7",) and not linked["clarifications"] and not linked["errors"]:
-                if intent == "Q8":
-                    from src.query.compare import compare as do_compare
-                    result = do_compare(s, _eng, linked["slots"].get("company_a",""), linked["slots"].get("company_b",""))
+                # 缓存检查: 只缓存结构化结果, key 含 intent+slots+graph_mtime
+                cached_result = _cache.get(intent, linked["slots"], context_code)
+                if cached_result is not None:
+                    result = cached_result
+                    is_cached = True
                 else:
-                    executor = get_executor(intent)
-                    result = executor(s, _eng, linked["slots"])
+                    if intent == "Q8":
+                        from src.query.compare import compare as do_compare
+                        result = do_compare(s, _eng, linked["slots"].get("company_a",""), linked["slots"].get("company_b",""))
+                    else:
+                        executor = get_executor(intent)
+                        result = executor(s, _eng, linked["slots"])
+                    _cache.set(intent, linked["slots"], result, context_code)
+                    is_cached = False
+
+                # 在 result 中标记 cached
+                if isinstance(result, dict):
+                    result["cached"] = is_cached
                 yield f"event: data\ndata: {json.dumps(result, ensure_ascii=False, default=str)}\n\n"
 
                 # 记录对话轮次(更新焦点栈)
@@ -245,9 +258,9 @@ def ask_stream(q: str, context_code: str = "", session_id: str = ""):
                             full_answer += token
                             yield f"event: token\ndata: {json.dumps({'text': token}, ensure_ascii=False)}\n\n"
 
-                        # 6. 回查
+                        # 6. 回查 + token 统计
                         v = verify_answer(s, full_answer)
-                        yield f"event: verify\ndata: {json.dumps({'passed': v['passed'], 'violations': v.get('violations',[])}, ensure_ascii=False)}\n\n"
+                        yield f"event: verify\ndata: {json.dumps({'passed': v['passed'], 'violations': v.get('violations',[]), 'tokens': _llm.last_usage}, ensure_ascii=False)}\n\n"
                     except Exception as e:
                         yield f"event: error\ndata: {json.dumps({'error': str(e)[:100]}, ensure_ascii=False)}\n\n"
                 else:
